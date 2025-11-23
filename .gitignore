@@ -1,0 +1,8 @@
+# dependencies
+node_modules
+
+# Others
+.env
+.DS_Store
+*.log
+*.p8
