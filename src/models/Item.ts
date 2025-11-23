@@ -1,13 +1,14 @@
-import mongoose, { Schema, Document } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
+import { ItemDocument } from '../types/item';
 
-export interface IItem extends Document {
-  name: string;
-  description: string;
-}
+const ItemSchema = new Schema<ItemDocument>(
+  {
+    name: { type: String, required: true, trim: true },
+    description: { type: String, trim: true },
+  },
+  {
+    timestamps: true,
+  }
+);
 
-const ItemSchema: Schema = new Schema({
-  name: { type: String, required: true },
-  description: { type: String, required: false },
-});
-
-export default mongoose.model<IItem>('Item', ItemSchema);
+export default mongoose.model<ItemDocument>('Item', ItemSchema);
