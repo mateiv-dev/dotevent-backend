@@ -1,58 +1,44 @@
-import mongoose, { Schema } from 'mongoose';
-import { UserDocument } from '../types/user';
+import { Document, Types } from 'mongoose';
 
-const UserSchema = new Schema<UserDocument>(
-  {
-    name: { type: String, required: true, trim: true },
-    email: {
-      type: String,
-      required: true,
-      unique: true,
-      lowercase: true,
-      trim: true,
-      match: [/^\S+@\S+\.\S+$/, 'Please enter a valid email'],
-    },
-    role: {
-      type: String,
-      required: true,
-      enum: ['user', 'student', 'student_rep', 'organizer', 'admin'],
-      default: 'user',
-    },
-    university: {
-      type: String,
-      trim: true,
-      required: function (this: UserDocument) {
-        return this.role === 'student';
-      },
-    },
-    represents: {
-      type: String,
-      trim: true,
-      required: function (this: UserDocument) {
-        return this.role === 'student_rep';
-      },
-    },
-    organizationName: {
-      type: String,
-      trim: true,
-      required: function (this: UserDocument) {
-        return this.role === 'organizer';
-      },
-    },
-  },
-  {
-    timestamps: true,
-  }
-);
+interface IBaseUser {
+  name: string;
+  email: string;
+  role: 'user' | 'student' | 'student_rep' | 'organizer' | 'admin';
+}
 
-UserSchema.pre('save', function () {
-  if (this.role === 'student' && !this.university) {
-    throw new Error('University is required for students');
-  } else if (this.role === 'student_rep' && !this.represents) {
-    throw new Error('Represents field is required for student representatives');
-  } else if (this.role === 'organizer' && !this.organizationName) {
-    throw new Error('Organization name is required for organizers');
-  }
-});
+export interface IUser extends IBaseUser {
+  university?: string;
+  represents?: string;
+  organizationName?: string;
+}
 
-export default mongoose.model<UserDocument>('User', UserSchema);
+export interface UserDocument extends IUser, Document {
+  _id: Types.ObjectId;
+  createdAt: Date;
+  updatedAt: Date;
+}
+
+export interface INormalUser extends IBaseUser {
+  role: 'user';
+}
+
+export interface IStudent extends IBaseUser {
+  role: 'student';
+  university: string;
+}
+
+export interface IStudentRep extends IBaseUser {
+  role: 'student_rep';
+  represents: string;
+}
+
+export interface IOrganizer extends IBaseUser {
+  role: 'organizer';
+  organizationName: string;
+}
+
+export interface IAdmin extends IBaseUser {
+  role: 'admin';
+}
+
+export type UserType = INormalUser | IStudent | IStudentRep | IOrganizer | IAdmin;

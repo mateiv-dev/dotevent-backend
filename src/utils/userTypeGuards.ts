@@ -1,4 +1,4 @@
-import { UserDocument, IStudent, IStudentRep, IOrganizer, IAdmin } from '../types/user';
+import { UserDocument, IStudent, IStudentRep, IOrganizer, IAdmin } from '../models/user';
 
 export function isStudent(user: UserDocument): user is UserDocument & IStudent {
   return user.role === 'student';
