@@ -1,5 +1,5 @@
 import dotenv from "dotenv";
-import Server from "./server";
+import Server from "./utils/server";
 import { connectMongoDB } from "./config/mongodb";
 
 dotenv.config();

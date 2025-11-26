@@ -1,14 +1,12 @@
 import express, { NextFunction, Request, Response } from 'express';
 import cors from 'cors';
 
-import { AppError } from './utils/app_error';
-import eventRoutes from './routes/event_routes';
-import defaultRoutes from './routes/default_routes';
-import { globalErrorHandler } from './middlewares/global_error_handler';
-import firebase from './middlewares/firebase';
+import defaultRoutes from '../routes/default_routes';
+import eventRoutes from '../routes/event_routes';
+import { AppError } from './app_error';
+import { globalErrorHandler } from '../middlewares/global_error_handler';
 
 const server = express();
-// const authService = firebase.auth();
 
 server.use(cors());
 server.use(express.json());
