@@ -19,5 +19,7 @@ export const requireAuth = async (req: Request, _res: Response, next: NextFuncti
 
     req.user = decodedToken;
 
+    await firebase.auth().setCustomUserClaims(decodedToken.uid, {role: 'admin'});
+
     next();
 };
