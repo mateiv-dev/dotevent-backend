@@ -1,35 +1,32 @@
-import dotenv from 'dotenv';
+import dotenv from "dotenv";
+import Server from "./server";
+import { connectMongoDB } from "./config/mongodb";
+
 dotenv.config();
 
-import express, { Request, Response } from 'express';
-import mongoose from 'mongoose';
-import cors from 'cors';
-import itemRoutes from './routes/itemRoutes';
+(async () => {
+  const PORT = process.env.PORT;
+  const MONGODB_URI = process.env.MONGODB_URI;
 
-const api = express();
-const PORT = process.env.PORT;
-const MONGO_URI = process.env.MONGO_URI;
+  if (!PORT) {
+    console.error("CRITICAL_ERROR: PORT is not defined");
+    process.exit(1);
+  }
 
-if (!PORT) {
-  throw new Error("PORT is not defined");
-}
-if (!MONGO_URI) {
-  throw new Error("MONGO_URI is not defined");
-}
+  if (!MONGODB_URI) {
+    console.error("CRITICAL_ERROR: MONGODB_URI is not defined");
+    process.exit(1);
+  }
 
-api.use(cors());
-api.use(express.json());
+  try {
+    await connectMongoDB(MONGODB_URI);
 
-mongoose.connect(MONGO_URI)
-  .then(() => console.log("Connected to MongoDB"))
-  .catch(err => console.error("MongoDB connection error:", err));
-
-api.get('/', (req: Request, res: Response) => {
-  res.send('All systems are fully operational');
-});
-
-api.use('/items', itemRoutes);
-
-api.listen(PORT, () => {
-  console.log(`Server running on http://127.0.0.1:${PORT}`);
-});
+    Server.listen(PORT, () => {
+      console.log(`Server running on http://localhost:${PORT}`);
+    });
+  }
+  catch (error) {
+    console.error("Fatal startup error:", error);
+    process.exit(1); 
+  }
+})();
