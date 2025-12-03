@@ -3,6 +3,20 @@
     "rootDir": "src",
     "outDir": "dist",
 
+    "baseUrl": "./src",
+    "paths": {
+      "@models/*": ["models/*"],
+      "@services/*": ["services/*"],
+      "@controllers/*": ["controllers/*"],
+      "@repositories/*": ["repositories/*"],
+      "@config/*": ["config/*"],
+      "@utils/*": ["utils/*"],
+      "@routes/*": ["routes/*"],
+      "@middlewares/*": ["middlewares/*"],
+      "@dtos/*": ["dtos/*"],
+      "@schemas/*": ["schemas/*"],
+    },
+
     "resolveJsonModule": true,
 
     "target": "ES2020",

@@ -1,7 +1,17 @@
-import { Request, Response, NextFunction } from 'express';
-import { AppError } from '../utils/app_error';
+import { Request, Response, NextFunction, ErrorRequestHandler } from 'express';
+import { AppError } from '@utils/AppError';
 
-export const globalErrorHandler = (err: any, _req: Request, res: Response, _next: NextFunction) => {
+type AsyncController = (req: Request, res: Response, next: NextFunction) => Promise<any>;
+
+export const asyncErrorHandler = (fn: AsyncController) => {
+  return (req: Request, res: Response, next: NextFunction) => {
+    Promise.resolve(fn(req, res, next)).catch(error => next(error));
+  };
+};
+
+export const globalErrorHandler: ErrorRequestHandler = 
+    (err: any, _req: Request, res: Response, _next: NextFunction) => {
+
     err.statusCode = err.statusCode || 500;
     err.status = err.status || 'error';
 
@@ -25,8 +35,8 @@ export const globalErrorHandler = (err: any, _req: Request, res: Response, _next
         error = handleValidationError(error);
     }
     if (error.name === 'MongoNetworkError' || error.name === 'MongooseServerSelectionError') {
-        console.error("Database Connection Failure:", error); 
-        error = new AppError("Internal server configuration error.", 500);
+        console.error('Database Connection Failure:', error); 
+        error = new AppError('Internal server configuration error.', 500);
     }
     
     res.status(error.statusCode).json({
@@ -39,7 +49,7 @@ export const globalErrorHandler = (err: any, _req: Request, res: Response, _next
 const handleFirebaseAuthErrors = (err: any): AppError => {
     switch (err.code) {
         case 'auth/id-token-expired':
-            return new AppError('Authentication token has expired. Please log in again.', 401); 
+            return new AppError('Authentication token has expired.', 401);
 
         case 'auth/id-token-revoked':
             return new AppError('Authentication token has been revoked.', 401);
@@ -51,6 +61,9 @@ const handleFirebaseAuthErrors = (err: any): AppError => {
 
         case 'auth/user-disabled':
             return new AppError('Access denied. User account is currently disabled.', 403);
+
+        case 'auth/user-not-found':
+            return new AppError('User not found in Firebase Auth', 404);
             
         default:
             console.error('Unhandled Firebase Auth Error:', err.code);
@@ -62,7 +75,7 @@ const handleDuplicateFields = (err: any) => {
     const match = err.message.match(/\s+dup key: \{ (.+?):\s+/); 
     const field = match ? match[1] : 'field';
     const message = `The provided value for field '${field}' is already in use.`;
-    return new AppError(message, 400);
+    return new AppError(message, 409);
 };
 
 const handleValidationError = (err: any) => {
