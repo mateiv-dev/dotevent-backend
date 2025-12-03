@@ -1,44 +1,74 @@
-import { Document, Types } from 'mongoose';
+import mongoose, { Schema } from 'mongoose';
+import { Role } from 'types/Role';
+import { IAdmin, IOrganizer, IStudent, IStudentRep, UserDocument } from 'types/User';
 
-interface IBaseUser {
-  name: string;
-  email: string;
-  role: 'user' | 'student' | 'student_rep' | 'organizer' | 'admin';
-}
+const baseUserSchema = new Schema<UserDocument>(
+  {
+    firebaseId: {
+      type: String,
+      required: true,
+      trim: true
+    },
+    name: { 
+      type: String, 
+      required: true, 
+      trim: true,
+      minLength: [2, '\'name\' must contain 2 or more characters.']
+    },
+    email: { 
+      type: String, 
+      required: true,
+      unique: true,
+      lowercase: true,
+      trim: true,
+      match: [/^\S+@\S+\.\S+$/, 'Invalid email'],
+    },
+    role: { 
+      type: String, 
+      enum: Object.values(Role), 
+      default: Role.SIMPLE_USER 
+    }
+  },
+  {
+    timestamps: true,
+    discriminatorKey: 'role',
+    collection: 'users'
+  }
+);
 
-export interface IUser extends IBaseUser {
-  university?: string;
-  represents?: string;
-  organizationName?: string;
-}
+export const UserModel = mongoose.model<UserDocument>('User', baseUserSchema);
 
-export interface UserDocument extends IUser, Document {
-  _id: Types.ObjectId;
-  createdAt: Date;
-  updatedAt: Date;
-}
+const studentSchema = new Schema<IStudent>({
+  university: { 
+    type: String, 
+    required: true 
+  }
+});
 
-export interface INormalUser extends IBaseUser {
-  role: 'user';
-}
+export const StudentModel = UserModel.discriminator<IStudent>(Role.STUDENT, studentSchema);
 
-export interface IStudent extends IBaseUser {
-  role: 'student';
-  university: string;
-}
+const studentRepSchema = new Schema<IStudentRep>({
+  university: { 
+    type: String, 
+    required: true 
+  },
+  represents: { 
+    type: String, 
+    required: true 
+  }
+});
 
-export interface IStudentRep extends IBaseUser {
-  role: 'student_rep';
-  represents: string;
-}
+export const StudentRepModel = UserModel.discriminator<IStudentRep>(Role.STUDENT_REP, studentRepSchema);
 
-export interface IOrganizer extends IBaseUser {
-  role: 'organizer';
-  organizationName: string;
-}
+const organizerSchema = new Schema<IOrganizer>({
+  organizationName: { 
+    type: String,
+    required: true
+  },
+});
 
-export interface IAdmin extends IBaseUser {
-  role: 'admin';
-}
+export const OrganizerModel = UserModel.discriminator<IOrganizer>(Role.ORGANIZER, organizerSchema);
 
-export type UserType = INormalUser | IStudent | IStudentRep | IOrganizer | IAdmin;
+const adminSchema = new Schema<IAdmin>();
+
+export const AdminModel = UserModel.discriminator<IAdmin>(Role.ADMIN, adminSchema);

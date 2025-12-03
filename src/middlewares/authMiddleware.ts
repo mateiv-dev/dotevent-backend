@@ -1,8 +1,9 @@
-import { Request, Response, NextFunction } from "express";
-import { AppError } from "../utils/app_error";
-import firebase from "./firebase";
+import { Request, Response, NextFunction } from 'express';
+import { AppError } from '@utils/AppError';
+import firebase from '@config/firebase';
+import { asyncErrorHandler } from './errorMiddleware';
 
-export const requireAuth = async (req: Request, _res: Response, next: NextFunction) => {
+export const requireAuth = asyncErrorHandler(async (req: Request, _res: Response, next: NextFunction) => {
     const header = req.headers.authorization;
 
     if (!header || !header.startsWith('Bearer ')) {
@@ -19,7 +20,5 @@ export const requireAuth = async (req: Request, _res: Response, next: NextFuncti
 
     req.user = decodedToken;
 
-    await firebase.auth().setCustomUserClaims(decodedToken.uid, {role: 'admin'});
-
     next();
-};
+});
