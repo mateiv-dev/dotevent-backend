@@ -1,17 +1,20 @@
 import { Router } from 'express';
-import { createEvent, deleteEvent, getEvent, getEvents, updateEvent } from '../controllers/eventController';
+import { createEvent, deleteEvent, getEvent, getApprovedEvents, updateEvent, getPendingEvents } from '../controllers/eventController';
 import { requireAuth } from '../middlewares/authMiddleware';
-import { validateBody } from '@middlewares/validationMiddleware';
-import { createEventSchema, updateEventSchema } from '@dtos/EventDto';
+import { requirePostPermission } from '@middlewares/postMiddleware';
+import { requireAdmin } from '@middlewares/adminMiddleware';
+import { approveEvent, rejectEvent } from '@controllers/adminController';
 
 const router = Router();
 
-router.get('/', getEvents);
+router.get('/', getApprovedEvents);
+router.get('/pending', requireAuth, requireAdmin, getPendingEvents);
 router.get('/:id', getEvent);
-// router.post('/', validateBody(createEventSchema), requireAuth, createEvent);
-// router.put('/:id', validateBody(updateEventSchema), requireAuth, updateEvent);
-router.post('/', requireAuth, createEvent);
-router.put('/:id', requireAuth, updateEvent);
-router.delete('/:id', requireAuth, deleteEvent);
+router.post('/', requireAuth, requirePostPermission, createEvent);
+router.put('/:id', requireAuth, requirePostPermission, updateEvent);
+router.delete('/:id', requireAuth, requirePostPermission, deleteEvent);
+
+router.post('/:id/approve', requireAuth, requireAdmin, approveEvent);
+router.post('/:id/reject', requireAuth, requireAdmin, rejectEvent);
 
 export default router;

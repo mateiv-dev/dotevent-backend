@@ -3,9 +3,15 @@ import { asyncErrorHandler } from '@middlewares/errorMiddleware';
 import { AppError } from '@utils/AppError';
 import { ResponseEventDto } from '@dtos/EventDto';
 import EventService from '@services/EventService';
+import { EventStatus } from 'types/EventStatus';
 
-export const getEvents = asyncErrorHandler(async (_req: Request, res: Response) => {
-    const events = await EventService.getEvents();
+export const getApprovedEvents = asyncErrorHandler(async (_req: Request, res: Response) => {
+    const events = await EventService.getEvents(EventStatus.APPROVED);
+    res.status(200).json(ResponseEventDto.fromArray(events));
+});
+
+export const getPendingEvents = asyncErrorHandler(async (_req: Request, res: Response) => {
+    const events = await EventService.getEvents(EventStatus.PENDING);
     res.status(200).json(ResponseEventDto.fromArray(events));
 });
 

@@ -1,5 +1,6 @@
 import mongoose, { InferSchemaType, Schema, HydratedDocument } from 'mongoose';
 import { EventCategory } from 'types/EventCategory';
+import { EventStatus } from 'types/EventStatus';
 
 const eventSchema = new Schema(
   {
@@ -14,9 +15,19 @@ const eventSchema = new Schema(
     },
     attendees: { type: Number, required: true, default: 0, min: 0 },
     capacity: { type: Number, required: true, min: 1 },
-    isRegistered: { type: Boolean, required: true, default: false },
+    // isRegistered: { type: Boolean, required: true, default: false },
+    status: {
+      type: String,
+      trim: true,
+      enum: Object.values(EventStatus),
+      default: EventStatus.PENDING
+    },
     organizer: { type: String, required: true, trim: true },
     description: { type: String, required: true, trim: true },
+    rejectionReason: {
+      type: String,
+      trim: true
+    }
   },
   {
     timestamps: true,

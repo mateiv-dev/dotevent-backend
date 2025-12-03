@@ -1,11 +1,14 @@
 import { EventModel, EventDocument } from '@models/Event';
+import { EventStatus } from 'types/EventStatus';
 
 class EventService {
 
-    async getEvents(): Promise<EventDocument[]> {
-        return await EventModel.find().exec();
+    async getEvents(status: EventStatus): Promise<EventDocument[]> {
+        return await EventModel.find({ 
+            status: status 
+        }).exec();
     }
-
+    
     async getEvent(id: string): Promise<EventDocument | null> {
         return await EventModel.findById(id).exec();
     }
