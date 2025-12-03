@@ -2,63 +2,72 @@ import firebase from "@config/firebase";
 import { RoleRequestModel } from "@models/RoleRequest";
 import { UserModel } from "@models/User";
 import { AppError } from "@utils/AppError";
+import mongoose from "mongoose";
 import { Role } from "types/Role";
 import { RequestDocument } from "types/RoleRequest";
 import { RoleRequestStatus } from "types/RoleRequestStatus";
 
 class AdminRequestService {
 
-  async getRequests(): Promise<RequestDocument[]> {
-    const requests = await RoleRequestModel.find();
-    return requests;
-  }
-
- async approveRequest(id?: string): Promise<RequestDocument> {
-    if (!id) throw new AppError('ID required', 400);
-
-    const request = await RoleRequestModel.findById(id);
-    if (!request || request.status !== RoleRequestStatus.PENDING) {
-        throw new AppError('Invalid request', 400);
-    }
-    
-    let updateData = {};
-    let unsetData = {};
-
-    if (request.requestedRole === Role.ORGANIZER) {
-        updateData = {
-            role: Role.ORGANIZER,
-            organizationName: request.organizationName
-        };
-        unsetData = { university: 1, represents: 1 };
-
-    } else if (request.requestedRole === Role.STUDENT_REP) {
-        updateData = {
-            role: Role.STUDENT_REP,
-            university: request.university,
-            represents: request.represents
-        };
-        unsetData = { organizationName: 1 };
+    async getRequests(): Promise<RequestDocument[]> {
+        const requests = await RoleRequestModel.find();
+        return requests;
     }
 
-    const updatedUser = await UserModel.findByIdAndUpdate(
-        request.user,
-        { 
-            $set: updateData,
-            $unset: unsetData
-        },
-        { 
-            new: true,
-            runValidators: true
+    async approveRequest(id?: string): Promise<RequestDocument> {
+        if (!id) throw new AppError('ID required', 400);
+
+        const request = await RoleRequestModel.findById(id);
+        if (!request || request.status !== RoleRequestStatus.PENDING) {
+            throw new AppError('Invalid request', 400);
         }
-    );
 
-    if (!updatedUser) throw new AppError('User not found', 404);
+        let updateOps = {};
 
-    await firebase.auth().setCustomUserClaims(updatedUser.firebaseId, { role: updatedUser.role });
+        if (request.requestedRole === Role.ORGANIZER) {
+            updateOps = {
+                $set: { 
+                    role: Role.ORGANIZER,
+                    organizationName: request.organizationName 
+                },
+                $unset: { 
+                    university: "", 
+                    represents: "" 
+                }
+            };
+        } 
+        else if (request.requestedRole === Role.STUDENT_REP) {
+            updateOps = {
+                $set: { 
+                    role: Role.STUDENT_REP,
+                    university: request.university,
+                    represents: request.represents
+                },
+                $unset: { 
+                    organizationName: "" 
+                }
+            };
+        }
 
-    request.status = RoleRequestStatus.APPROVED;
-    return await request.save();
-  }
+        const userId = new mongoose.Types.ObjectId(request.user.toString());
+
+        const result = await UserModel.collection.findOneAndUpdate(
+            { _id: userId }, 
+            updateOps,
+            { returnDocument: 'after' }
+        );
+
+        const updatedUser = result?.value || result;
+
+        if (!updatedUser) {
+            throw new AppError('User not found during raw update.', 404);
+        }
+
+        await firebase.auth().setCustomUserClaims(updatedUser.firebaseId, { role: updatedUser.role });
+
+        request.status = RoleRequestStatus.APPROVED;
+        return await request.save();
+    }
 }
 
 export default new AdminRequestService();
