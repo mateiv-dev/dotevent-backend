@@ -1,5 +1,5 @@
 export enum EventStatus {
-  PENDING = 'penging',
+  PENDING = 'pending',
   APPROVED = 'approved',
   REJECTED = 'rejected'
 }
