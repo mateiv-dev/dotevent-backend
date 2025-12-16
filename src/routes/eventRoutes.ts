@@ -2,7 +2,6 @@ import { Router } from 'express';
 import { createEvent, deleteEvent, getEvent, getFilteredEvents, updateEvent, getPendingEvents, registerParticipant, unregisterParticipant } from '../controllers/eventController';
 import { requireAuth } from '../middlewares/authMiddleware';
 import { requireRoles as requireRoles } from '@middlewares/roleMiddleware';
-import { requireAdmin } from '@middlewares/adminMiddleware';
 import { approveEvent, rejectEvent } from '@controllers/adminController';
 import { Role } from 'types/Role';
 
