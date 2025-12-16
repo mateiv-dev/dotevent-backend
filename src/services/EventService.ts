@@ -1,6 +1,16 @@
 import { EventModel, EventDocument } from '@models/Event';
 import { EventStatus } from 'types/EventStatus';
 
+export interface EventFilters {
+  eventType?: string; 
+  faculty?: string;
+  department?: string;
+  organizer?: string;
+  location?: string;
+  startDate?: string;
+  endDate?: string;
+}
+
 class EventService {
 
     async getEvents(status: EventStatus): Promise<EventDocument[]> {
@@ -14,7 +24,12 @@ class EventService {
     }
 
     async createEvent(eventData: Event): Promise<EventDocument> {
-        const newEvent = new EventModel(eventData);
+        const securedEventData = {
+            ...eventData,
+            status: EventStatus.PENDING
+        };
+        
+        const newEvent = new EventModel(securedEventData);
         return await newEvent.save();
     }
 
@@ -28,6 +43,51 @@ class EventService {
             eventNewData,
             { new: true, runValidators: true }
         ).exec();
+    }
+
+    async getFilteredEvents(filters: EventFilters = {}): Promise<EventDocument[]> {
+        const query: any = {};
+
+        query.status = EventStatus.APPROVED;
+        
+        if (filters.eventType) {
+            query.eventType = filters.eventType;
+        }
+
+        const caseInsensitiveOptions = { $options: 'i' };
+
+        if (filters.faculty) {
+            query.faculty = { $regex: filters.faculty, ...caseInsensitiveOptions };
+        }
+
+        if (filters.department) {
+            query.department = { $regex: filters.department, ...caseInsensitiveOptions };
+        }
+
+        if (filters.location) {
+            query.location = { $regex: filters.location, ...caseInsensitiveOptions };
+        }
+
+        if (filters.organizer) {
+            query.organizerName = { $regex: filters.organizer, ...caseInsensitiveOptions };
+        }
+
+        if (filters.startDate || filters.endDate) {
+            query.date = {};
+
+            if (filters.startDate) {
+                const startOfDay = new Date(new Date(filters.startDate).toDateString()); 
+                query.date.$gte = startOfDay; 
+            }
+
+            if (filters.endDate) {
+                const endOfDay = new Date(new Date(filters.endDate).toDateString()); 
+                endOfDay.setDate(endOfDay.getDate() + 1);
+                query.date.$lt = endOfDay; 
+            }
+        }
+
+        return await EventModel.find(query).sort({ date: 1 }).exec();
     }
 }
 

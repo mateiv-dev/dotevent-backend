@@ -1,20 +1,25 @@
 import { Router } from 'express';
-import { createEvent, deleteEvent, getEvent, getApprovedEvents, updateEvent, getPendingEvents } from '../controllers/eventController';
+import { createEvent, deleteEvent, getEvent, getFilteredEvents, updateEvent, getPendingEvents, registerParticipant, unregisterParticipant } from '../controllers/eventController';
 import { requireAuth } from '../middlewares/authMiddleware';
-import { requirePostPermission } from '@middlewares/postMiddleware';
+import { requireRoles as requireRoles } from '@middlewares/roleMiddleware';
 import { requireAdmin } from '@middlewares/adminMiddleware';
 import { approveEvent, rejectEvent } from '@controllers/adminController';
+import { Role } from 'types/Role';
 
 const router = Router();
 
-router.get('/', getApprovedEvents);
-router.get('/pending', requireAuth, requireAdmin, getPendingEvents);
+router.get('/', getFilteredEvents);
 router.get('/:id', getEvent);
-router.post('/', requireAuth, requirePostPermission, createEvent);
-router.put('/:id', requireAuth, requirePostPermission, updateEvent);
-router.delete('/:id', requireAuth, requirePostPermission, deleteEvent);
 
-router.post('/:id/approve', requireAuth, requireAdmin, approveEvent);
-router.post('/:id/reject', requireAuth, requireAdmin, rejectEvent);
+router.get('/pending', requireAuth, requireRoles([Role.ADMIN]), getPendingEvents);
+router.post('/:id/approve', requireAuth, requireRoles([Role.ADMIN]), approveEvent);
+router.post('/:id/reject', requireAuth, requireRoles([Role.ADMIN]), rejectEvent);
+
+router.post('/', requireAuth, requireRoles([Role.ORGANIZER, Role.STUDENT_REP]), createEvent);
+router.put('/:id', requireAuth, requireRoles([Role.ORGANIZER, Role.STUDENT_REP]), updateEvent);
+router.delete('/:id', requireAuth, requireRoles([Role.ORGANIZER, Role.STUDENT_REP]), deleteEvent);
+
+router.post('/:id/register', requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT]), registerParticipant);
+router.delete('/:id/register', requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT]), unregisterParticipant);
 
 export default router;

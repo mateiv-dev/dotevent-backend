@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import { AppError } from '@utils/AppError';
 import firebase from '@config/firebase';
 import { asyncErrorHandler } from './errorMiddleware';
+import { Role } from 'types/Role';
 
 export const requireAuth = asyncErrorHandler(async (req: Request, _res: Response, next: NextFunction) => {
     const header = req.headers.authorization;
@@ -17,8 +18,13 @@ export const requireAuth = asyncErrorHandler(async (req: Request, _res: Response
     }
 
     const decodedToken = await firebase.auth().verifyIdToken(idToken);
-
-    req.user = decodedToken;
+    
+    req.user = {
+        uid: decodedToken.uid,
+        firebaseId: decodedToken.uid,
+        email: decodedToken.email || '',
+        role: (decodedToken.role as Role) || Role.SIMPLE_USER 
+    };
 
     next();
 });

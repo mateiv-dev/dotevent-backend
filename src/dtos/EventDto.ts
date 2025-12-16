@@ -30,7 +30,6 @@ export class ResponseEventDto {
     public category: EventCategory;
     public attendees: number;
     public capacity: number;
-    public isRegistered: boolean;
     public organizer: string;
     public description: string;
     public createdAt: Date;
@@ -44,7 +43,6 @@ export class ResponseEventDto {
         this.category = event.category;
         this.attendees = event.attendees;
         this.capacity = event.capacity;
-        this.isRegistered = event.isRegistered;
         this.organizer = event.organizer;
         this.description = event.description;
         this.createdAt = event.createdAt;

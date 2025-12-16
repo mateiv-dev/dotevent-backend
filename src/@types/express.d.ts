@@ -4,7 +4,12 @@ import { DecodedIdToken } from 'firebase-admin/auth';
 declare global {
   namespace Express {
     interface Request {
-      user?: DecodedIdToken; 
+      user?: {
+        uid: string;
+        firebaseId: string;
+        email?: string;
+        role: Role;
+      };
     }
   }
 }

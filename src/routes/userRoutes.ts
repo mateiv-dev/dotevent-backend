@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { requireAuth } from '@middlewares/authMiddleware';
 import { createUser as registerUser, getMe, deleteMe, updateMe, syncEmail, getUsers, getMeRequests, createRequest } from '@controllers/userController';
 import { requireAdmin } from '@middlewares/adminMiddleware';
-import { requirePostPermission } from '@middlewares/postMiddleware';
+import { requirePostPermission } from '@middlewares/roleMiddleware';
 
 const router = Router();
 

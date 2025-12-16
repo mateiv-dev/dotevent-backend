@@ -15,7 +15,6 @@ const eventSchema = new Schema(
     },
     attendees: { type: Number, required: true, default: 0, min: 0 },
     capacity: { type: Number, required: true, min: 1 },
-    // isRegistered: { type: Boolean, required: true, default: false },
     status: {
       type: String,
       trim: true,
@@ -23,6 +22,14 @@ const eventSchema = new Schema(
       default: EventStatus.PENDING
     },
     organizer: { type: String, required: true, trim: true },
+    faculty: {
+      type: String,
+      trim: true
+    },
+    department: {
+      type: String,
+      trim: true
+    },
     description: { type: String, required: true, trim: true },
     rejectionReason: {
       type: String,

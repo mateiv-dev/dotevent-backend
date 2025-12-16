@@ -1,6 +1,6 @@
 import mongoose, { Schema } from 'mongoose';
 import { Role } from 'types/Role';
-import { IAdmin, IOrganizer, IStudent, IStudentRep, UserDocument } from 'types/User';
+import { IAdmin, IOrganizer, IStudent, IStudentRep, IUserBase, UserDocument } from 'types/User';
 
 const baseUserSchema = new Schema<UserDocument>(
   {
@@ -37,6 +37,10 @@ const baseUserSchema = new Schema<UserDocument>(
 );
 
 export const UserModel = mongoose.model<UserDocument>('User', baseUserSchema);
+
+const simpleUserDiscriminatorSchema = new Schema<IUserBase>({});
+
+export const SimpleUserModel = UserModel.discriminator<IUserBase>(Role.SIMPLE_USER, simpleUserDiscriminatorSchema);
 
 const studentSchema = new Schema<IStudent>({
   university: { 

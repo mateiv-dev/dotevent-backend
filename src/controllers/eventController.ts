@@ -2,17 +2,19 @@ import { Request, Response } from 'express';
 import { asyncErrorHandler } from '@middlewares/errorMiddleware';
 import { AppError } from '@utils/AppError';
 import { ResponseEventDto } from '@dtos/EventDto';
-import EventService from '@services/EventService';
+import EventService, { EventFilters } from '@services/EventService';
 import { EventStatus } from 'types/EventStatus';
+import EventRegistrationService from '@services/EventRegistrationService';
 
-export const getApprovedEvents = asyncErrorHandler(async (_req: Request, res: Response) => {
-    const events = await EventService.getEvents(EventStatus.APPROVED);
+export const getFilteredEvents = asyncErrorHandler(async (req: Request, res: Response) => {
+    const filters: EventFilters = req.query;
+    const events = await EventService.getFilteredEvents(filters);
     res.status(200).json(ResponseEventDto.fromArray(events));
 });
 
 export const getPendingEvents = asyncErrorHandler(async (_req: Request, res: Response) => {
     const events = await EventService.getEvents(EventStatus.PENDING);
-    res.status(200).json(ResponseEventDto.fromArray(events));
+    res.status(200).json(events);
 });
 
 export const getEvent = asyncErrorHandler(async (req: Request, res: Response) => {
@@ -74,4 +76,38 @@ export const updateEvent = asyncErrorHandler(async (req: Request, res: Response)
     }
     
     res.status(200).json(ResponseEventDto.from(updatedEvent));
+});
+
+export const registerParticipant = asyncErrorHandler(async (req: Request, res: Response) => {
+    const { id: eventId } = req.params;
+    const userId = req.user?.uid;
+
+    if (!userId) {
+        throw new AppError('Invalid user ID format supplied', 400);
+    }
+
+    if (!eventId) {
+        throw new AppError('Invalid event ID format supplied', 400);
+    }
+
+    const registration = await EventRegistrationService.registerParticipant(userId, eventId);
+
+    res.status(200).json(registration.ticketCode);
+});
+
+export const unregisterParticipant = asyncErrorHandler(async (req: Request, res: Response) => {
+    const { id: eventId } = req.params;
+    const userId = req.user?.uid;
+
+    if (!userId) {
+        throw new AppError('Invalid user ID format supplied', 400);
+    }
+
+    if (!eventId) {
+        throw new AppError('Invalid event ID format supplied', 400);
+    }
+
+    await EventRegistrationService.unregisterParticipant(userId, eventId);
+
+    res.status(200).send();
 });
