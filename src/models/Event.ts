@@ -2,6 +2,19 @@ import mongoose, { InferSchemaType, Schema, HydratedDocument } from 'mongoose';
 import { EventCategory } from 'types/EventCategory';
 import { EventStatus } from 'types/EventStatus';
 
+const attachmentSchema = new Schema(
+  {
+    url: { type: String, required: true },
+    name: { type: String, required: true },
+    fileType: { 
+      type: String, 
+      enum: ['image', 'document'], 
+      required: true 
+    }
+  },
+  { _id: false }
+);
+
 const eventSchema = new Schema(
   {
     title: { type: String, required: true, trim: true },
@@ -34,6 +47,10 @@ const eventSchema = new Schema(
     rejectionReason: {
       type: String,
       trim: true
+    },
+    attachments: {
+      type: [attachmentSchema],
+      default: []
     }
   },
   {

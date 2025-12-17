@@ -1,5 +1,7 @@
 import { EventModel, EventDocument } from '@models/Event';
 import { EventStatus } from 'types/EventStatus';
+import path from 'path';
+import fs from 'fs';
 
 export interface EventFilters {
   eventType?: string; 
@@ -23,16 +25,43 @@ class EventService {
         return await EventModel.findById(id).exec();
     }
 
-    async createEvent(eventData: Event): Promise<EventDocument> {
-        const securedEventData = {
-            ...eventData,
-            status: EventStatus.PENDING
-        };
-        
-        const newEvent = new EventModel(securedEventData);
-        return await newEvent.save();
-    }
+    async createEvent(eventData: Partial<Event>, files?: Express.Multer.File[]): Promise<EventDocument> {
+        try {
+            let attachments: any[] = [];
 
+            if (files && files.length > 0) {
+                attachments = files.map(file => ({
+                    url: `/uploads/${file.filename}`,
+                    name: file.originalname,
+                    fileType: file.mimetype.startsWith('image') ? 'image' : 'document'
+                }));
+            }
+
+            attachments.sort((a, b) => {
+                if (a.fileType === 'image' && b.fileType !== 'image') return -1;
+                if (a.fileType !== 'image' && b.fileType === 'image') return 1;
+                return a.url.localeCompare(b.url);
+            });
+
+            const securedEventData = {
+                ...eventData,
+                attachments: attachments,
+                status: EventStatus.PENDING
+            };
+
+            const newEvent = new EventModel(securedEventData);
+
+            return await newEvent.save();
+        }
+        catch (error) {
+            if (files && files.length > 0) {
+                await this.deleteFiles(files);
+            }
+
+            throw error;
+        }
+    }
+    
     async deleteEvent(id: string): Promise<EventDocument | null> {
         return await EventModel.findByIdAndDelete(id).exec();
     }
@@ -88,6 +117,23 @@ class EventService {
         }
 
         return await EventModel.find(query).sort({ date: 1 }).exec();
+    }
+
+    private async deleteFiles(files: Express.Multer.File[]): Promise<void> {
+        const deletionPromises = files.map(file => {
+            const filePath = path.join(process.cwd(), 'uploads', file.filename);
+
+            return new Promise<void>((resolve) => {
+                fs.unlink(filePath, (err) => {
+                    if (err) {
+                        console.error(`[Cleanup] Could not be deleted: ${file.filename}`, err);
+                    }
+                    resolve();
+                });
+            });
+        });
+
+        await Promise.all(deletionPromises);
     }
 }
 

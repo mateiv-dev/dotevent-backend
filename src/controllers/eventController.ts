@@ -34,11 +34,9 @@ export const getEvent = asyncErrorHandler(async (req: Request, res: Response) =>
 });
 
 export const createEvent = asyncErrorHandler(async (req: Request, res: Response) => {
-    const eventData: Event = req.body;
-    // const validatedEventData: CreateEventDto = createEventSchema.safeParse(req.body);
-
-    const createdEvent = await EventService.createEvent(eventData);
-    
+    const eventData = req.body;
+    const files = req.files as Express.Multer.File[];
+    const createdEvent = await EventService.createEvent(eventData, files);
     res.status(201).json(ResponseEventDto.from(createdEvent));
 });
 
