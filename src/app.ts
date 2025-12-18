@@ -7,6 +7,7 @@ import { AppError } from '@utils/AppError';
 import { globalErrorHandler } from '@middlewares/errorMiddleware';
 import userRoutes from '@routes/userRoutes';
 import requestRoutes from '@routes/requestRoutes';
+import notificationRoutes from '@routes/notificationRoutes';
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use("/api", defaultRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/requests', requestRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use((req, _res, _next) => {
   throw new AppError(`Can't find route '${req.originalUrl}' on this server.`, 404);

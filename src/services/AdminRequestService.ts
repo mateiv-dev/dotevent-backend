@@ -7,6 +7,7 @@ import { EventStatus } from "types/EventStatus";
 import { Role } from "types/Role";
 import { RequestDocument } from "types/RoleRequest";
 import { RoleRequestStatus } from "types/RoleRequestStatus";
+import NotificationService from "@services/NotificationService";
 
 class AdminService {
 
@@ -44,7 +45,7 @@ class AdminService {
 
     if (request.requestedRole === Role.ORGANIZER) {
       newUserData.organizationName = request.organizationName;
-    } 
+    }
     else if (request.requestedRole === Role.STUDENT_REP) {
       newUserData.university = request.university;
       newUserData.represents = request.represents;
@@ -61,7 +62,18 @@ class AdminService {
     await firebase.auth().setCustomUserClaims(updatedUser.firebaseId, { role: updatedUser.role });
 
     request.status = RoleRequestStatus.APPROVED;
-    return await request.save();
+    const savedRequest = await request.save();
+
+    await NotificationService.createNotification(
+      updatedUser.firebaseId,
+      'Role Request Approved',
+      `Your request for ${request.requestedRole.replace('_', ' ')} role has been approved!`,
+      'role_approved',
+      undefined,
+      request._id.toString()
+    );
+
+    return savedRequest;
   }
 
   async rejectRoleRequest(id: string, rejectionReason: string): Promise<RequestDocument> {
@@ -84,7 +96,18 @@ class AdminService {
     request.rejectionReason = rejectionReason;
     request.status = RoleRequestStatus.REJECTED;
 
-    return await request.save();
+    const savedRequest = await request.save();
+
+    await NotificationService.createNotification(
+      existingUser.firebaseId,
+      'Role Request Rejected',
+      `Your request for ${request.requestedRole.replace('_', ' ')} role has been rejected. Reason: ${rejectionReason}`,
+      'role_rejected',
+      undefined,
+      request._id.toString()
+    );
+
+    return savedRequest;
   }
 
   async approveEvent(id: String): Promise<EventDocument> {
@@ -100,7 +123,20 @@ class AdminService {
 
     event.status = EventStatus.APPROVED;
 
-    return await event.save();
+    const savedEvent = await event.save();
+
+    const creator = await UserModel.findOne({ name: event.organizer });
+    if (creator) {
+      await NotificationService.createNotification(
+        creator.firebaseId,
+        'Event Approved',
+        `Your event "${event.title}" has been approved!`,
+        'event_approved',
+        event._id.toString()
+      );
+    }
+
+    return savedEvent;
   }
 
   async rejectEvent(id: String, rejectionReason: string): Promise<EventDocument> {
@@ -116,8 +152,21 @@ class AdminService {
 
     event.status = EventStatus.REJECTED;
     event.rejectionReason = rejectionReason;
-    
-    return await event.save();
+
+    const savedEvent = await event.save();
+
+    const creator = await UserModel.findOne({ name: event.organizer });
+    if (creator) {
+      await NotificationService.createNotification(
+        creator.firebaseId,
+        'Event Rejected',
+        `Your event "${event.title}" has been rejected. Reason: ${rejectionReason}`,
+        'event_rejected',
+        event._id.toString()
+      );
+    }
+
+    return savedEvent;
   }
 }
 
