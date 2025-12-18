@@ -44,11 +44,11 @@ class EventRegistrationService {
 
     return newRegistration;
   }
-  
+
   async unregisterParticipant(userId: string, eventId: string): Promise<RegistrationDocument> {
     const result = await RegistrationModel.findOneAndDelete({
-        user: userId,
-        event: eventId
+      user: userId,
+      event: eventId
     });
 
     if (!result) {
@@ -66,6 +66,17 @@ class EventRegistrationService {
     }
 
     return result;
+  }
+
+  async getUserRegistrations(userId: string) {
+    const registrations = await RegistrationModel.find({ user: userId })
+      .populate('event')
+      .exec();
+
+    return registrations.map(reg => ({
+      ...reg.toObject(),
+      event: reg.event
+    }));
   }
 }
 
