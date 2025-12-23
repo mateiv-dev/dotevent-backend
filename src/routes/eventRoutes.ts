@@ -21,7 +21,7 @@ router.post('/', requireAuth, requireRoles([Role.ORGANIZER, Role.STUDENT_REP, Ro
 router.put('/:id', requireAuth, requireRoles([Role.ORGANIZER, Role.STUDENT_REP, Role.ADMIN]), upload.array('files', MAX_FILES_COUNT), updateEvent);
 router.delete('/:id', requireAuth, requireRoles([Role.ORGANIZER, Role.STUDENT_REP, Role.ADMIN]), deleteEvent);
 
-router.post('/:id/register', requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT]), registerParticipant);
-router.delete('/:id/register', requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT]), unregisterParticipant);
+router.post('/:id/register', requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]), registerParticipant);
+router.delete('/:id/register', requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]), unregisterParticipant);
 
 export default router;
