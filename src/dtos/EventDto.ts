@@ -20,6 +20,12 @@ export const updateEventSchema = createEventSchema.partial();
 export type CreateEventDto = z.infer<typeof createEventSchema>;
 export type UpdateEventDto = z.infer<typeof updateEventSchema>;
 
+export interface AttachmentDto {
+    url: string;
+    name: string;
+    fileType: string;
+}
+
 export class ResponseEventDto {
     
     public id: string;
@@ -32,8 +38,9 @@ export class ResponseEventDto {
     public capacity: number;
     public organizer: string;
     public description: string;
+    public attachments: AttachmentDto[];
     public createdAt: Date;
-
+    
     constructor(event: EventDocument) {
         this.id = event._id.toString();
         this.title = event.title;
@@ -45,6 +52,7 @@ export class ResponseEventDto {
         this.capacity = event.capacity;
         this.organizer = event.organizer;
         this.description = event.description;
+        this.attachments = event.attachments;
         this.createdAt = event.createdAt;
     }
 
