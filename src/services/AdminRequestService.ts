@@ -8,6 +8,8 @@ import { Role } from "types/Role";
 import { RequestDocument } from "types/RoleRequest";
 import { RoleRequestStatus } from "types/RoleRequestStatus";
 import NotificationService from "@services/NotificationService";
+import { NotificationType } from "types/NotificationType";
+import { CreateNotification } from "types/CreateNotification";
 
 class AdminService {
 
@@ -64,14 +66,15 @@ class AdminService {
     request.status = RoleRequestStatus.APPROVED;
     const savedRequest = await request.save();
 
-    await NotificationService.createNotification(
-      updatedUser.firebaseId,
-      'Role Request Approved',
-      `Your request for ${request.requestedRole.replace('_', ' ')} role has been approved!`,
-      'role_approved',
-      undefined,
-      request._id.toString()
-    );
+    const notificationData: CreateNotification = {
+      user: updatedUser.firebaseId,
+      title: 'Role Request Approved',
+      message: `Your request for ${request.requestedRole.replace('_', ' ')} role has been approved!`,
+      type: NotificationType.ROLE_APPROVED,
+      relatedRequest: request._id.toString(),
+    };
+
+    await NotificationService.createNotification(notificationData);
 
     return savedRequest;
   }
@@ -98,14 +101,15 @@ class AdminService {
 
     const savedRequest = await request.save();
 
-    await NotificationService.createNotification(
-      existingUser.firebaseId,
-      'Role Request Rejected',
-      `Your request for ${request.requestedRole.replace('_', ' ')} role has been rejected. Reason: ${rejectionReason}`,
-      'role_rejected',
-      undefined,
-      request._id.toString()
-    );
+    const notificationData: CreateNotification = {
+      user: existingUser.firebaseId,
+      title: 'Role Request Rejected',
+      message: `Your request for ${request.requestedRole.replace('_', ' ')} role has been rejected. Reason: ${rejectionReason}`,
+      type: NotificationType.ROLE_REJECTED,
+      relatedRequest: request._id.toString(),
+    };
+
+    await NotificationService.createNotification(notificationData);
 
     return savedRequest;
   }
@@ -126,14 +130,17 @@ class AdminService {
     const savedEvent = await event.save();
 
     const creator = await UserModel.findOne({ name: event.organizer });
+
     if (creator) {
-      await NotificationService.createNotification(
-        creator.firebaseId,
-        'Event Approved',
-        `Your event "${event.title}" has been approved!`,
-        'event_approved',
-        event._id.toString()
-      );
+      const notificationData: CreateNotification = {
+        user: creator.firebaseId,
+        title: 'Event Approved',
+        message: `Your event "${event.title}" has been approved!`,
+        type: NotificationType.EVENT_APPROVED,
+        relatedEvent: event._id.toString()
+      };
+
+      await NotificationService.createNotification(notificationData);
     }
 
     return savedEvent;
@@ -157,13 +164,15 @@ class AdminService {
 
     const creator = await UserModel.findOne({ name: event.organizer });
     if (creator) {
-      await NotificationService.createNotification(
-        creator.firebaseId,
-        'Event Rejected',
-        `Your event "${event.title}" has been rejected. Reason: ${rejectionReason}`,
-        'event_rejected',
-        event._id.toString()
-      );
+      const notificationData: CreateNotification = {
+        user: creator.firebaseId,
+        title: 'Event Rejected',
+        message: `Your event "${event.title}" has been rejected. Reason: ${rejectionReason}`,
+        type: NotificationType.EVENT_REJECTED,
+        relatedEvent: event._id.toString()
+      };
+
+      await NotificationService.createNotification(notificationData);
     }
 
     return savedEvent;

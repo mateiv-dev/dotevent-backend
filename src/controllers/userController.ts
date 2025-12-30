@@ -6,49 +6,7 @@ import UserRequestService from "@services/UserRequestService";
 import { CreateRoleRequestDto } from "@dtos/RoleRequestDto";
 import EventRegistrationService from "@services/EventRegistrationService";
 import { ResponseEventDto } from "@dtos/EventDto";
-
-// export const getUser = asyncErrorHandler(async (req: Request, res: Response) => {
-//     const id = req.user?.id;
-
-//     if (!id) {
-//         throw new AppError('Invalid user ID format supplied', 400);
-//     }
-
-//     const user = await UserService.getUser(id);
-//     res.status(200).json(ResponseUserDto.from(user));
-// });
-
-// export const deleteUser = asyncErrorHandler(async (req: Request, res: Response) => {
-//     const { id } = req.params;
-
-//     if (!id) {
-//         throw new AppError('Invalid user ID format supplied', 400);
-//     }
-
-//     const deletedUser = await UserService.deleteUser(id);
-
-//     res.status(200).json(ResponseUserDto.from(deletedUser));
-// });
-
-// export const updateUser = asyncErrorHandler(async (req: Request, res: Response) => {
-//     const { id } = req.params;
-//     const updateUserData: UpdateUserDto = req.body;
-
-//     if (!id) {
-//         throw new AppError('Invalid user ID format supplied', 400);
-//     }
-
-//     const updatedUser = await UserService.updateUser(
-//         id, 
-//         updateUserData 
-//     );
-
-//     if (!updatedUser) {
-//         throw new AppError('User not found', 404);
-//     }
-
-//     res.status(200).json(ResponseUserDto.from(updatedUser));
-// });
+import EventService from "@services/EventService";
 
 export const getUsers = asyncErrorHandler(async (_req: Request, res: Response) => {
   const users = await UserService.getUsers();
@@ -115,4 +73,15 @@ export const getMeEvents = asyncErrorHandler(async (req: Request, res: Response)
   const registrations = await EventRegistrationService.getUserRegistrations(firebaseId);
   const events = registrations.map(reg => ResponseEventDto.from(reg.event as any));
   return res.status(200).json(events);
+});
+
+export const getFavoriteEvents = asyncErrorHandler(async (req: Request, res: Response) => {
+  const firebaseId = req.user!.uid;
+  const favoriteEvents = await EventService.getMeFavoriteEvents(firebaseId);
+  res.status(200).json(ResponseEventDto.fromArray(favoriteEvents));
+});
+
+export const addEventToFavorites = asyncErrorHandler(async (req: Request, res: Response) => {
+  const firebaseId = req.user!.uid;
+
 });

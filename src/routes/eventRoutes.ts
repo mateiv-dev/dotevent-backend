@@ -5,6 +5,7 @@ import { requireRoles as requireRoles } from '@middlewares/roleMiddleware';
 import { approveEvent, rejectEvent } from '@controllers/adminController';
 import { Role } from 'types/Role';
 import { upload } from '@middlewares/multerMiddleware';
+import { getFavoriteEvents } from '@controllers/userController';
 
 const MAX_FILES_COUNT = 10;
 
@@ -12,6 +13,9 @@ const router = Router();
 
 router.get('/', getFilteredEvents);
 router.get('/:id', getEvent);
+
+router.get("/favorite", requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]), getFavoriteEvents);
+// router.post("/:id/favorite", requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]), );
 
 router.get('/pending', requireAuth, requireRoles([Role.ADMIN]), getPendingEvents);
 router.post('/:id/approve', requireAuth, requireRoles([Role.ADMIN]), approveEvent);

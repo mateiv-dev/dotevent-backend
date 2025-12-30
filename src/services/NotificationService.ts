@@ -1,33 +1,11 @@
+import { CreateNotification } from 'types/CreateNotification';
 import { NotificationDocument, NotificationModel } from '@models/Notification';
 import { AppError } from '@utils/AppError';
 
 class NotificationService {
-  async createNotification(
-    userId: string,
-    title: string,
-    message: string,
-    type: 'event_approved' | 'event_rejected' | 'role_approved' | 'role_rejected' | 'event_reminder' | 'event_update',
-    relatedEvent?: string,
-    relatedRequest?: string
-  ): Promise<NotificationDocument> {
-    const notificationData: any = {
-      user: userId,
-      title,
-      message,
-      type
-    };
-
-    if (relatedEvent) {
-      notificationData.relatedEvent = relatedEvent;
-    }
-
-    if (relatedRequest) {
-      notificationData.relatedRequest = relatedRequest;
-    }
-
-    const notification = await NotificationModel.create(notificationData);
-
-    return notification as unknown as NotificationDocument;
+  async createNotification(data: CreateNotification): Promise<NotificationDocument> {
+    const notification = await NotificationModel.create(data); 
+    return notification;
   }
 
   async getUserNotifications(userId: string, limit: number = 50) {
@@ -55,11 +33,13 @@ class NotificationService {
     return notification;
   }
 
-  async markAllAsRead(userId: string): Promise<void> {
-    await NotificationModel.updateMany(
+  async markAllAsRead(userId: string): Promise<number> {
+    const result = await NotificationModel.updateMany(
       { user: userId, isRead: false },
       { isRead: true }
     );
+
+    return result.modifiedCount;
   }
 
   async deleteNotification(notificationId: string, userId: string): Promise<NotificationDocument> {

@@ -2,6 +2,7 @@ import { EventModel, EventDocument } from '@models/Event';
 import { EventStatus } from 'types/EventStatus';
 import path from 'path';
 import fs from 'fs';
+import { FavoriteEventModel } from '@models/FavoriteEvent';
 
 export interface EventFilters {
   eventType?: string; 
@@ -25,6 +26,14 @@ class EventService {
         return await EventModel.findById(id).exec();
     }
 
+    async getMeFavoriteEvents(id: string): Promise<EventDocument[]> {
+        const favorites = await FavoriteEventModel.find({ user: id })
+            .populate<{ event: EventDocument }>('event')
+            .exec();
+        
+        return favorites.map(fav => fav.event);
+    }
+    
     async createEvent(eventData: Partial<Event>, files?: Express.Multer.File[]): Promise<EventDocument> {
         try {
             let attachments: any[] = [];

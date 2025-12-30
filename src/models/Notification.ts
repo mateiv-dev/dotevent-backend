@@ -1,10 +1,11 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { NotificationType } from 'types/NotificationType';
 
 export interface NotificationDocument extends Document {
   user: string;
   title: string;
   message: string;
-  type: 'event_approved' | 'event_rejected' | 'role_approved' | 'role_rejected' | 'event_reminder' | 'event_update';
+  type: NotificationType;
   isRead: boolean;
   relatedEvent?: mongoose.Types.ObjectId;
   relatedRequest?: mongoose.Types.ObjectId;
@@ -31,7 +32,7 @@ const NotificationSchema: Schema = new Schema({
   type: {
     type: String,
     required: true,
-    enum: ['event_approved', 'event_rejected', 'role_approved', 'role_rejected', 'event_reminder', 'event_update']
+    enum: Object.values(NotificationType)
   },
   isRead: {
     type: Boolean,

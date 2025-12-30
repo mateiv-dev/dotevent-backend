@@ -1,6 +1,8 @@
 import { Request, Response } from 'express';
 import { asyncErrorHandler } from '@middlewares/errorMiddleware';
 import NotificationService from '@services/NotificationService';
+import mongoose from 'mongoose';
+import { AppError } from '@utils/AppError';
 
 export const getNotifications = asyncErrorHandler(async (req: Request, res: Response) => {
   const userId = req.user!.uid;
@@ -18,6 +20,10 @@ export const markAsRead = asyncErrorHandler(async (req: Request, res: Response) 
     throw new Error('Notification ID is required');
   }
 
+  if (!mongoose.Types.ObjectId.isValid(id)) {
+    throw new AppError('Invalid notification ID', 400);
+  }
+
   const notification = await NotificationService.markAsRead(id, userId);
   res.status(200).json(notification);
 });
@@ -25,8 +31,8 @@ export const markAsRead = asyncErrorHandler(async (req: Request, res: Response) 
 export const markAllAsRead = asyncErrorHandler(async (req: Request, res: Response) => {
   const userId = req.user!.uid;
 
-  await NotificationService.markAllAsRead(userId);
-  res.status(200).json({ message: 'All notifications marked as read' });
+  const count = await NotificationService.markAllAsRead(userId);
+  res.status(200).json(count);
 });
 
 export const deleteNotification = asyncErrorHandler(async (req: Request, res: Response) => {
