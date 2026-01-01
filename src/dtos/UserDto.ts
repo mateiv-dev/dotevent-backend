@@ -19,12 +19,21 @@ export class ResponseUserDto {
     public name: string;
     public email: string;
     public role: string;
+    //am adaugat pentru a putea modifica setarile userului meu urmatoarele 3 linii
+    public university?: string;
+    public organizationName?: string;
+    public represents?: string;
 
-    constructor(testUser: UserDocument) {
+    constructor(testUser: any) {
         // this.uid = testUser.uid;
         this.name = testUser.name;
         this.email = testUser.email;
         this.role = testUser.role;
+        //si aici 3 linii, iar la parametrul constructorului any
+        if (testUser.university) this.university = testUser.university;
+        if (testUser.organizationName) this.organizationName = testUser.organizationName;
+        if (testUser.represents) this.represents = testUser.represents;
+        
     }
 
     static from(testUser: UserDocument | null): ResponseUserDto | null {
