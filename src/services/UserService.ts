@@ -151,7 +151,7 @@ class UserService {
         allowedFields = {
           name: incomingData.name,
           university: incomingData.university,
-          represents: incomingData
+          represents: incomingData.represents
         };
 
         break;
