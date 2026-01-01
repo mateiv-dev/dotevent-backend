@@ -10,6 +10,7 @@ export interface UpdateUserDto {
     name?: string;
     university?: string;
     organizationName?: string;
+    represents?: string;
 }
 
 export class ResponseUserDto {
