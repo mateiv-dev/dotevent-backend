@@ -33,7 +33,6 @@ export class ResponseUserDto {
         if (testUser.university) this.university = testUser.university;
         if (testUser.organizationName) this.organizationName = testUser.organizationName;
         if (testUser.represents) this.represents = testUser.represents;
-        
     }
 
     static from(testUser: UserDocument | null): ResponseUserDto | null {

@@ -10,15 +10,15 @@ class NotificationService {
 
   async getUserNotifications(userId: string, limit: number = 50) {
     const notifications = await NotificationModel.find({ user: userId })
-      .sort({ createdAt: -1 })
-      .limit(limit)
-      .populate('relatedEvent')
-      .populate('relatedRequest')
-      .exec();
+    .limit(limit)
+    .populate('relatedEvent')
+    .populate('relatedRequest')
+    .sort({ createdAt: -1 })
+    .exec();
 
     return notifications as NotificationDocument[];
   }
-
+  
   async markAsRead(notificationId: string, userId: string): Promise<NotificationDocument> {
     const notification = await NotificationModel.findOneAndUpdate(
       { _id: notificationId, user: userId },

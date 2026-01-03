@@ -1,6 +1,7 @@
 import dotenv from 'dotenv';
 import app from './app';
 import { connectMongoDB } from '@config/mongodb';
+import { startReminderSystem } from 'jobs/eventReminderScheduler';
 
 dotenv.config();
 
@@ -20,6 +21,8 @@ dotenv.config();
 
   try {
     await connectMongoDB(MONGODB_URI);
+
+    startReminderSystem(5000); // 1 min
 
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);

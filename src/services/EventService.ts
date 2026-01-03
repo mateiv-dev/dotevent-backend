@@ -55,9 +55,10 @@ class EventService {
             const securedEventData = {
                 ...eventData,
                 attachments: attachments,
-                status: EventStatus.PENDING
+                status: EventStatus.PENDING,
+                attendees: 0,
             };
-
+            
             const newEvent = new EventModel(securedEventData);
 
             return await newEvent.save();

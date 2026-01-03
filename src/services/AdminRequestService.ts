@@ -13,7 +13,7 @@ import { CreateNotification } from "types/CreateNotification";
 
 class AdminService {
 
-  async getRequests(): Promise<RequestDocument[]> {
+  async getRoleRequests(): Promise<RequestDocument[]> {
     const requests = await RoleRequestModel.find({
       status: RoleRequestStatus.PENDING
     }).exec();
@@ -69,7 +69,7 @@ class AdminService {
     const notificationData: CreateNotification = {
       user: updatedUser.firebaseId,
       title: 'Role Request Approved',
-      message: `Your request for ${request.requestedRole.replace('_', ' ')} role has been approved!`,
+      message: `Your request for ${request.requestedRole.replace('_', ' ')} role has been approved! To access your new features, please log out and log back in.`,
       type: NotificationType.ROLE_APPROVED,
       relatedRequest: request._id.toString(),
     };

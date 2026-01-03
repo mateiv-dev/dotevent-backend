@@ -6,6 +6,7 @@ export interface RegistrationDocument extends Document {
   event: mongoose.Types.ObjectId;
   hasCheckedIn: boolean;
   ticketCode: string;
+  reminderSent: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -30,6 +31,10 @@ const RegistrationSchema: Schema = new Schema({
     unique: true,
     default: uuidv4,
   },
+  reminderSent: { 
+    type: Boolean, 
+    default: false 
+  }
 },
   {
     timestamps: true 
@@ -37,5 +42,6 @@ const RegistrationSchema: Schema = new Schema({
 );
 
 RegistrationSchema.index({ user: 1, event: 1 }, { unique: true });
+RegistrationSchema.index({ reminderSent: 1 });
 
 export const RegistrationModel = mongoose.model<RegistrationDocument>('Registration', RegistrationSchema);

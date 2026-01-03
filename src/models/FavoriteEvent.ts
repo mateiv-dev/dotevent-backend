@@ -3,6 +3,7 @@ import mongoose, { Schema } from "mongoose";
 export interface FavoriteEventDocument extends Document {
   user: string;
   event: mongoose.Types.ObjectId;
+  reminderSent: boolean;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -18,6 +19,10 @@ const FavoriteEventSchema: Schema = new Schema(
       ref: 'Event', 
       required: true 
     },
+    reminderSent: { 
+      type: Boolean, 
+      default: false
+    }
   },
   {
     timestamps: true

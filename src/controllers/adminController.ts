@@ -3,8 +3,8 @@ import { asyncErrorHandler } from "@middlewares/errorMiddleware";
 import AdminService from "@services/AdminRequestService";
 import { AppError } from "@utils/AppError";
 
-export const getRequests = asyncErrorHandler(async (_req: Request, res: Response) => {
-  const requests = await AdminService.getRequests();
+export const getRoleRequests = asyncErrorHandler(async (_req: Request, res: Response) => {
+  const requests = await AdminService.getRoleRequests();
   res.status(200).json(requests);
 });
 

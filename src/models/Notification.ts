@@ -41,12 +41,10 @@ const NotificationSchema: Schema = new Schema({
   relatedEvent: {
     type: Schema.Types.ObjectId,
     ref: 'Event',
-    required: false
   },
   relatedRequest: {
     type: Schema.Types.ObjectId,
     ref: 'RoleRequest',
-    required: false
   }
 },
   {

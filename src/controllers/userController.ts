@@ -77,11 +77,7 @@ export const getMeEvents = asyncErrorHandler(async (req: Request, res: Response)
 
 export const getFavoriteEvents = asyncErrorHandler(async (req: Request, res: Response) => {
   const firebaseId = req.user!.uid;
+  console.log(`firebaseId: ${firebaseId}`);
   const favoriteEvents = await EventService.getMeFavoriteEvents(firebaseId);
   res.status(200).json(ResponseEventDto.fromArray(favoriteEvents));
-});
-
-export const addEventToFavorites = asyncErrorHandler(async (req: Request, res: Response) => {
-  const firebaseId = req.user!.uid;
-
 });

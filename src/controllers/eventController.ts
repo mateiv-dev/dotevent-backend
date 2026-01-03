@@ -5,6 +5,7 @@ import { ResponseEventDto } from '@dtos/EventDto';
 import EventService, { EventFilters } from '@services/EventService';
 import { EventStatus } from 'types/EventStatus';
 import EventRegistrationService from '@services/EventRegistrationService';
+import FavoriteEventService from '@services/FavoriteEventService';
 
 export const getFilteredEvents = asyncErrorHandler(async (req: Request, res: Response) => {
     const filters: EventFilters = req.query;
@@ -108,4 +109,30 @@ export const unregisterParticipant = asyncErrorHandler(async (req: Request, res:
     await EventRegistrationService.unregisterParticipant(userId, eventId);
 
     res.status(200).send();
+});
+
+export const addEventToFavorites = asyncErrorHandler(async (req: Request, res: Response) => {
+  const firebaseId = req.user!.uid;
+  const { id: eventId } = req.params;
+
+  if (!eventId || eventId?.trim().length === 0) {
+    throw new AppError('Parameter \'eventId\' is required', 400);
+  }
+
+  const event = await FavoriteEventService.markFavorite(firebaseId, eventId);
+
+  res.status(200).json(ResponseEventDto.from(event));
+});
+
+export const removeEventFromFavorites = asyncErrorHandler(async (req: Request, res: Response) => {
+  const firebaseId = req.user!.uid;
+  const { id: eventId } = req.params;
+
+  if (!eventId || eventId?.trim().length === 0) {
+    throw new AppError('Parameter \'eventId\' is required', 400);
+  }
+
+  await FavoriteEventService.unmarkFavorite(firebaseId, eventId);
+  
+  res.status(200).json();
 });

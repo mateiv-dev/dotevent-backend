@@ -1,5 +1,15 @@
 import { Router } from 'express';
-import { createEvent, deleteEvent, getEvent, getFilteredEvents, updateEvent, getPendingEvents, registerParticipant, unregisterParticipant } from '../controllers/eventController';
+import { 
+  createEvent, 
+  deleteEvent, 
+  getEvent, 
+  getFilteredEvents, 
+  updateEvent, 
+  getPendingEvents, 
+  registerParticipant, 
+  unregisterParticipant, 
+  addEventToFavorites, 
+  removeEventFromFavorites } from '../controllers/eventController';
 import { requireAuth } from '../middlewares/authMiddleware';
 import { requireRoles as requireRoles } from '@middlewares/roleMiddleware';
 import { approveEvent, rejectEvent } from '@controllers/adminController';
@@ -12,18 +22,19 @@ const MAX_FILES_COUNT = 10;
 const router = Router();
 
 router.get('/', getFilteredEvents);
+router.get("/favorites", requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]), getFavoriteEvents);
 router.get('/:id', getEvent);
 
-router.get("/favorite", requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]), getFavoriteEvents);
-// router.post("/:id/favorite", requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]), );
+router.post("/:id/favorite", requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]), addEventToFavorites);
+router.delete("/:id/favorite", requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]), removeEventFromFavorites);
 
 router.get('/pending', requireAuth, requireRoles([Role.ADMIN]), getPendingEvents);
 router.post('/:id/approve', requireAuth, requireRoles([Role.ADMIN]), approveEvent);
 router.post('/:id/reject', requireAuth, requireRoles([Role.ADMIN]), rejectEvent);
 
-router.post('/', requireAuth, requireRoles([Role.ORGANIZER, Role.STUDENT_REP, Role.ADMIN]), upload.array('files', MAX_FILES_COUNT), createEvent);
-router.put('/:id', requireAuth, requireRoles([Role.ORGANIZER, Role.STUDENT_REP, Role.ADMIN]), upload.array('files', MAX_FILES_COUNT), updateEvent);
-router.delete('/:id', requireAuth, requireRoles([Role.ORGANIZER, Role.STUDENT_REP, Role.ADMIN]), deleteEvent);
+router.post('/', requireAuth, requireRoles([Role.ORGANIZER, Role.STUDENT_REP]), upload.array('files', MAX_FILES_COUNT), createEvent);
+router.put('/:id', requireAuth, requireRoles([Role.ORGANIZER, Role.STUDENT_REP]), upload.array('files', MAX_FILES_COUNT), updateEvent);
+router.delete('/:id', requireAuth, requireRoles([Role.ORGANIZER, Role.STUDENT_REP]), deleteEvent);
 
 router.post('/:id/register', requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]), registerParticipant);
 router.delete('/:id/register', requireAuth, requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]), unregisterParticipant);

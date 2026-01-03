@@ -9,6 +9,7 @@ export const getNotifications = asyncErrorHandler(async (req: Request, res: Resp
   const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
 
   const notifications = await NotificationService.getUserNotifications(userId, limit);
+  
   res.status(200).json(notifications);
 });
 

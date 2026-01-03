@@ -15,11 +15,17 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
-app.use("/", defaultRoutes);
-app.use('/events', eventRoutes);
-app.use('/users', userRoutes);
-app.use('/requests', requestRoutes);
-app.use('/notifications', notificationRoutes);
+// app.use("/", defaultRoutes);
+// app.use('/events', eventRoutes);
+// app.use('/users', userRoutes);
+// app.use('/requests', requestRoutes);
+// app.use('/notifications', notificationRoutes);
+
+app.use("/api", defaultRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/users', userRoutes);
+app.use('/api/requests', requestRoutes);
+app.use('/api/notifications', notificationRoutes);
 
 app.use((req, _res, _next) => {
   throw new AppError(`Can't find route '${req.originalUrl}' on this server.`, 404);

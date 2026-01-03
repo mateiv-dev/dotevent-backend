@@ -43,7 +43,7 @@ const storage = multer.diskStorage({
 });
 
 const fileFilter = (_req: any, file: Express.Multer.File, cb: any) => {
-  const allowedTypes = /jpeg|jpg|png|pdf|doc|docx/;
+  const allowedTypes = /jpeg|jpg|png|pdf|doc|docx|pptx/;
   const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
   const mimetype = allowedTypes.test(file.mimetype);
 
@@ -58,5 +58,5 @@ const fileFilter = (_req: any, file: Express.Multer.File, cb: any) => {
 export const upload = multer({ 
   storage: storage,
   fileFilter: fileFilter,
-  limits: { fileSize: 1024 * 1024 * 10 }
+  limits: { fileSize: 1024 * 1024 * 20 }
 });
