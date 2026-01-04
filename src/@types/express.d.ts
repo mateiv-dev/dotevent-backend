@@ -1,5 +1,5 @@
 import { Request } from 'express';
-import { DecodedIdToken } from 'firebase-admin/auth';
+import { Role } from 'types/Role';
 
 declare global {
   namespace Express {

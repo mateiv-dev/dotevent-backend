@@ -1,4 +1,4 @@
-import mongoose, { InferSchemaType, Schema, HydratedDocument } from 'mongoose';
+import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
 import { EventCategory } from 'types/EventCategory';
 import { EventStatus } from 'types/EventStatus';
 
@@ -6,13 +6,13 @@ const attachmentSchema = new Schema(
   {
     url: { type: String, required: true },
     name: { type: String, required: true },
-    fileType: { 
-      type: String, 
-      enum: ['image', 'document'], 
-      required: true 
-    }
+    fileType: {
+      type: String,
+      enum: ['image', 'document'],
+      required: true,
+    },
   },
-  { _id: false }
+  { _id: false },
 );
 
 const eventSchema = new Schema(
@@ -32,30 +32,38 @@ const eventSchema = new Schema(
       type: String,
       trim: true,
       enum: Object.values(EventStatus),
-      default: EventStatus.PENDING
+      default: EventStatus.PENDING,
     },
     organizer: { type: String, required: true, trim: true },
     faculty: {
       type: String,
-      trim: true
+      trim: true,
     },
     department: {
       type: String,
-      trim: true
+      trim: true,
     },
     description: { type: String, required: true, trim: true },
     rejectionReason: {
       type: String,
-      trim: true
+      trim: true,
     },
     attachments: {
       type: [attachmentSchema],
-      default: []
-    }
+      default: [],
+    },
+    averageRating: {
+      type: Number,
+      default: 0,
+    },
+    reviewCount: {
+      type: Number,
+      default: 0,
+    },
   },
   {
     timestamps: true,
-  }
+  },
 );
 
 export const EventModel = mongoose.model<EventDocument>('Event', eventSchema);

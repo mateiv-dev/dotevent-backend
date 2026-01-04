@@ -10,24 +10,25 @@ interface UniversityMap {
 }
 
 export const UNIVERSITY_DOMAINS: UniversityMap = {
-  "usv": "Universitatea Ștefan cel Mare din Suceava",
-  "ase": "Academia de Studii Economice din București",
-  "poli": "Universitatea Politehnica din București",
-  "ubb": "Universitatea Babeș-Bolyai din Cluj-Napoca",
+  usv: 'Universitatea Ștefan cel Mare din Suceava',
+  ase: 'Academia de Studii Economice din București',
+  poli: 'Universitatea Politehnica din București',
+  ubb: 'Universitatea Babeș-Bolyai din Cluj-Napoca',
 };
 
 const studentDomainRegex = /^[a-zA-Z0-9._%+-]+@student\.([a-zA-Z0-9-]+)\.ro$/;
 
 class UserService {
-
   async getUsers(): Promise<UserDocument[]> {
     return await UserModel.find({
-      role: { $ne: Role.ADMIN } 
-    }).exec();
+      role: { $ne: Role.ADMIN },
+    })
+      .lean()
+      .exec();
   }
 
   async getUser(id: string): Promise<UserDocument | null> {
-    const user = await UserModel.findById(id).exec();
+    const user = await UserModel.findById(id).lean().exec();
 
     if (!user) {
       throw new AppError('User not found', 404);
@@ -35,7 +36,17 @@ class UserService {
 
     return user;
   }
-  
+
+  async getUserByFirebaseId(id: string): Promise<UserDocument | null> {
+    const user = await UserModel.findOne({ firebaseId: id }).lean().exec();
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    return user;
+  }
+
   async getMe(firebaseId: string): Promise<UserDocument | null> {
     const user = await UserModel.findOne({ firebaseId: firebaseId }).exec();
 
@@ -48,7 +59,10 @@ class UserService {
     return user;
   }
 
-  async createUser(userData: CreateUserDto, adminKey?: string): Promise<UserDocument> {
+  async createUser(
+    userData: CreateUserDto,
+    adminKey?: string,
+  ): Promise<UserDocument> {
     const { firebaseId } = userData;
     let roleToAssign = Role.SIMPLE_USER;
 
@@ -68,7 +82,7 @@ class UserService {
       if (existedAdmin) {
         throw new AppError('Admin already exists', 409);
       }
-      
+
       roleToAssign = Role.ADMIN;
     }
 
@@ -77,14 +91,12 @@ class UserService {
     if (roleToAssign !== Role.ADMIN && match) {
       const domainKey = match[1];
 
-      if (domainKey) { 
-        roleToAssign = Role.STUDENT; 
+      if (domainKey) {
+        roleToAssign = Role.STUDENT;
 
         const universityName = UNIVERSITY_DOMAINS[domainKey];
-        
-        university = universityName 
-          ? universityName 
-          : domainKey.toUpperCase();
+
+        university = universityName ? universityName : domainKey.toUpperCase();
       }
     }
 
@@ -95,26 +107,27 @@ class UserService {
     });
 
     try {
-      await firebase.auth().setCustomUserClaims(firebaseId, { role: roleToAssign });
-    } 
-    catch (firebaseError) {
-      await UserModel.deleteOne({ firebaseId }); 
+      await firebase
+        .auth()
+        .setCustomUserClaims(firebaseId, { role: roleToAssign });
+    } catch (firebaseError) {
+      await UserModel.deleteOne({ firebaseId });
       throw new AppError('Failed to set user claims on Firebase.', 500);
     }
 
     return newUser;
   }
-  
+
   async deleteUser(id: string): Promise<UserDocument | null> {
     const user = UserModel.findOneAndDelete({ firebaseId: id }).exec();
-    
+
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
     return user;
   }
-  
+
   async deleteMe(id: string): Promise<UserDocument | null> {
     await firebase.auth().deleteUser(id);
     return await UserModel.findOneAndDelete({ firebaseId: id }).exec();
@@ -126,20 +139,20 @@ class UserService {
     }
 
     const user = await UserModel.findOne({ firebaseId: id });
-    
+
     if (!user) {
-      throw new AppError("User not found", 404);
+      throw new AppError('User not found', 404);
     }
-    
+
     let allowedFields = {};
 
     switch (user.role) {
       case Role.SIMPLE_USER:
         allowedFields = {
-          name: incomingData.name
+          name: incomingData.name,
         };
         break;
-      
+
       case Role.STUDENT:
         allowedFields = {
           name: incomingData.name,
@@ -151,11 +164,11 @@ class UserService {
         allowedFields = {
           name: incomingData.name,
           university: incomingData.university,
-          represents: incomingData.represents
+          represents: incomingData.represents,
         };
 
         break;
-      
+
       case Role.ORGANIZER:
         allowedFields = {
           name: incomingData.name,
@@ -178,7 +191,7 @@ class UserService {
     const user = await UserModel.findOne({ firebaseId: firebaseId });
 
     if (!user) {
-      throw new AppError("User not found", 404);
+      throw new AppError('User not found', 404);
     }
 
     if (user.email === newEmail) {

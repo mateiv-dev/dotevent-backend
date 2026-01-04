@@ -1,12 +1,16 @@
-import { EventModel } from "@models/Event";
-import { RegistrationDocument, RegistrationModel } from "@models/Registration";
-import { UserModel } from "@models/User";
-import { AppError } from "@utils/AppError";
+import { EventModel } from '@models/Event';
+import { RegistrationDocument, RegistrationModel } from '@models/Registration';
+import { UserModel } from '@models/User';
+import { AppError } from '@utils/AppError';
 
 class EventRegistrationService {
-
-  async registerParticipant(userId: string, eventId: string): Promise<RegistrationDocument> {
-    const user = await UserModel.findOne({ firebaseId: userId }).select('_id role');
+  async registerParticipant(
+    userId: string,
+    eventId: string,
+  ): Promise<RegistrationDocument> {
+    const user = await UserModel.findOne({ firebaseId: userId }).select(
+      '_id role',
+    );
 
     if (!user) {
       throw new AppError('User not found', 404);
@@ -20,7 +24,7 @@ class EventRegistrationService {
 
     const registration = await RegistrationModel.findOne({
       user: userId,
-      event: eventId
+      event: eventId,
     });
 
     if (registration) {
@@ -30,7 +34,7 @@ class EventRegistrationService {
     const updatedEvent = await EventModel.findByIdAndUpdate(
       eventId,
       { $inc: { attendees: 1 } },
-      { new: true }
+      { new: true },
     );
 
     if (!updatedEvent) {
@@ -39,16 +43,19 @@ class EventRegistrationService {
 
     const newRegistration = await RegistrationModel.create({
       user: userId,
-      event: eventId
+      event: eventId,
     });
 
     return newRegistration;
   }
 
-  async unregisterParticipant(userId: string, eventId: string): Promise<RegistrationDocument> {
+  async unregisterParticipant(
+    userId: string,
+    eventId: string,
+  ): Promise<RegistrationDocument> {
     const result = await RegistrationModel.findOneAndDelete({
       user: userId,
-      event: eventId
+      event: eventId,
     });
 
     if (!result) {
@@ -58,7 +65,7 @@ class EventRegistrationService {
     const updatedEvent = await EventModel.findByIdAndUpdate(
       eventId,
       { $inc: { attendees: -1 } },
-      { new: true }
+      { new: true },
     );
 
     if (!updatedEvent) {
@@ -73,10 +80,24 @@ class EventRegistrationService {
       .populate('event')
       .exec();
 
-    return registrations.map(reg => ({
+    return registrations.map((reg) => ({
       ...reg.toObject(),
-      event: reg.event
+      event: reg.event,
     }));
+  }
+
+  async getRegistration(
+    userId: string,
+    eventId: string,
+  ): Promise<RegistrationDocument | null> {
+    const registration = await RegistrationModel.findOne({
+      user: userId,
+      event: eventId,
+    })
+      .populate('event')
+      .exec();
+
+    return registration;
   }
 }
 
