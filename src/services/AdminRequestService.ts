@@ -1,27 +1,37 @@
-import firebase from "@config/firebase";
-import { EventDocument, EventModel } from "@models/Event";
-import { RoleRequestModel } from "@models/RoleRequest";
-import { UserModel } from "@models/User";
-import { AppError } from "@utils/AppError";
-import { EventStatus } from "types/EventStatus";
-import { Role } from "types/Role";
-import { RequestDocument } from "types/RoleRequest";
-import { RoleRequestStatus } from "types/RoleRequestStatus";
-import NotificationService from "@services/NotificationService";
-import { NotificationType } from "types/NotificationType";
-import { CreateNotification } from "types/CreateNotification";
+import firebase from '@config/firebase';
+import { EventDocument, EventModel } from '@models/Event';
+import { RoleRequestDocument, RoleRequestModel } from '@models/RoleRequest';
+import { UserModel } from '@models/User';
+import NotificationService from '@services/NotificationService';
+import { AppError } from '@utils/AppError';
+import { CreateNotification } from 'types/CreateNotification';
+import { EventStatus } from 'types/EventStatus';
+import { NotificationType } from 'types/NotificationType';
+import { Role } from 'types/Role';
+import { RoleRequestStatus } from 'types/RoleRequestStatus';
+import UserService from './UserService';
 
 class AdminService {
+  async getRoleRequests(): Promise<RoleRequestDocument[]> {
+    const requests = await RoleRequestModel.find()
+      .sort({ createdAt: -1 })
+      .lean()
+      .exec();
 
-  async getRoleRequests(): Promise<RequestDocument[]> {
-    const requests = await RoleRequestModel.find({
-      status: RoleRequestStatus.PENDING
-    }).exec();
     return requests;
   }
 
-  async approveRoleRequest(id: string): Promise<RequestDocument> {
-    const request = await RoleRequestModel.findById(id);
+  async approveRoleRequest(
+    adminId: string,
+    requestId: string,
+  ): Promise<RoleRequestDocument> {
+    const admin = UserService.userExists(adminId);
+
+    if (!admin) {
+      throw new AppError('Admin not found', 404);
+    }
+
+    const request = await RoleRequestModel.findById(requestId);
 
     if (!request) {
       throw new AppError('Request not found', 404);
@@ -42,13 +52,12 @@ class AdminService {
     let newUserData: any = {
       ...userObj,
       role: request.requestedRole,
-      updatedAt: new Date()
+      updatedAt: new Date(),
     };
 
     if (request.requestedRole === Role.ORGANIZER) {
       newUserData.organizationName = request.organizationName;
-    }
-    else if (request.requestedRole === Role.STUDENT_REP) {
+    } else if (request.requestedRole === Role.STUDENT_REP) {
       newUserData.university = request.university;
       newUserData.represents = request.represents;
     }
@@ -61,15 +70,21 @@ class AdminService {
       throw new AppError('Failed to create updated user', 500);
     }
 
-    await firebase.auth().setCustomUserClaims(updatedUser.firebaseId, { role: updatedUser.role });
+    await firebase
+      .auth()
+      .setCustomUserClaims(updatedUser._id, { role: updatedUser.role });
 
     request.status = RoleRequestStatus.APPROVED;
+    request.proccessedBy = adminId;
     const savedRequest = await request.save();
 
     const notificationData: CreateNotification = {
-      user: updatedUser.firebaseId,
+      user: updatedUser._id,
       title: 'Role Request Approved',
-      message: `Your request for ${request.requestedRole.replace('_', ' ')} role has been approved! To access your new features, please log out and log back in.`,
+      message: `Your request for ${request.requestedRole.replace(
+        '_',
+        ' ',
+      )} role has been approved!`,
       type: NotificationType.ROLE_APPROVED,
       relatedRequest: request._id.toString(),
     };
@@ -79,8 +94,18 @@ class AdminService {
     return savedRequest;
   }
 
-  async rejectRoleRequest(id: string, rejectionReason: string): Promise<RequestDocument> {
-    const request = await RoleRequestModel.findById(id);
+  async rejectRoleRequest(
+    adminId: string,
+    requestId: string,
+    rejectionReason: string,
+  ): Promise<RoleRequestDocument> {
+    const admin = UserService.userExists(adminId);
+
+    if (!admin) {
+      throw new AppError('Admin not found', 404);
+    }
+
+    const request = await RoleRequestModel.findById(requestId);
 
     if (!request) {
       throw new AppError('Request not found', 404);
@@ -98,13 +123,17 @@ class AdminService {
 
     request.rejectionReason = rejectionReason;
     request.status = RoleRequestStatus.REJECTED;
+    request.proccessedBy = adminId;
 
     const savedRequest = await request.save();
 
     const notificationData: CreateNotification = {
-      user: existingUser.firebaseId,
+      user: existingUser._id,
       title: 'Role Request Rejected',
-      message: `Your request for ${request.requestedRole.replace('_', ' ')} role has been rejected. Reason: ${rejectionReason}`,
+      message: `Your request for ${request.requestedRole.replace(
+        '_',
+        ' ',
+      )} role has been rejected. Reason: ${rejectionReason}`,
       type: NotificationType.ROLE_REJECTED,
       relatedRequest: request._id.toString(),
     };
@@ -114,8 +143,8 @@ class AdminService {
     return savedRequest;
   }
 
-  async approveEvent(id: String): Promise<EventDocument> {
-    const event = await EventModel.findById(id);
+  async approveEvent(adminId: string, eventId: String): Promise<EventDocument> {
+    const event = await EventModel.findById(eventId);
 
     if (!event) {
       throw new AppError('Event not found', 404);
@@ -133,11 +162,11 @@ class AdminService {
 
     if (creator) {
       const notificationData: CreateNotification = {
-        user: creator.firebaseId,
+        user: creator._id,
         title: 'Event Approved',
         message: `Your event "${event.title}" has been approved!`,
         type: NotificationType.EVENT_APPROVED,
-        relatedEvent: event._id.toString()
+        relatedEvent: event._id.toString(),
       };
 
       await NotificationService.createNotification(notificationData);
@@ -146,8 +175,12 @@ class AdminService {
     return savedEvent;
   }
 
-  async rejectEvent(id: String, rejectionReason: string): Promise<EventDocument> {
-    const event = await EventModel.findById(id);
+  async rejectEvent(
+    adminId: string,
+    eventId: String,
+    rejectionReason: string,
+  ): Promise<EventDocument> {
+    const event = await EventModel.findById(eventId);
 
     if (!event) {
       throw new AppError('Event not found', 404);
@@ -165,11 +198,11 @@ class AdminService {
     const creator = await UserModel.findOne({ name: event.organizer });
     if (creator) {
       const notificationData: CreateNotification = {
-        user: creator.firebaseId,
+        user: creator._id,
         title: 'Event Rejected',
         message: `Your event "${event.title}" has been rejected. Reason: ${rejectionReason}`,
         type: NotificationType.EVENT_REJECTED,
-        relatedEvent: event._id.toString()
+        relatedEvent: event._id.toString(),
       };
 
       await NotificationService.createNotification(notificationData);

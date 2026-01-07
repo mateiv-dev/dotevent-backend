@@ -1,56 +1,72 @@
-import { Request, Response } from 'express';
 import { asyncErrorHandler } from '@middlewares/errorMiddleware';
 import NotificationService from '@services/NotificationService';
-import mongoose from 'mongoose';
 import { AppError } from '@utils/AppError';
+import { Request, Response } from 'express';
+import mongoose from 'mongoose';
 
-export const getNotifications = asyncErrorHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.uid;
-  const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
+export const getNotifications = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.uid;
+    const limit = req.query.limit ? parseInt(req.query.limit as string) : 50;
 
-  const notifications = await NotificationService.getUserNotifications(userId, limit);
-  
-  res.status(200).json(notifications);
-});
+    const notifications = await NotificationService.getUserNotifications(
+      userId,
+      limit,
+    );
 
-export const markAsRead = asyncErrorHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.uid;
-  const { id } = req.params;
+    res.status(200).json(notifications);
+  },
+);
 
-  if (!id) {
-    throw new Error('Notification ID is required');
-  }
+export const markAsRead = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.uid;
+    const { id } = req.params;
 
-  if (!mongoose.Types.ObjectId.isValid(id)) {
-    throw new AppError('Invalid notification ID', 400);
-  }
+    if (!id) {
+      throw new Error('Notification ID is required');
+    }
 
-  const notification = await NotificationService.markAsRead(id, userId);
-  res.status(200).json(notification);
-});
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+      throw new AppError('Invalid notification ID', 400);
+    }
 
-export const markAllAsRead = asyncErrorHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.uid;
+    const notification = await NotificationService.markAsRead(id, userId);
+    res.status(200).json(notification);
+  },
+);
 
-  const count = await NotificationService.markAllAsRead(userId);
-  res.status(200).json(count);
-});
+export const markAllAsRead = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.uid;
 
-export const deleteNotification = asyncErrorHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.uid;
-  const { id } = req.params;
+    const count = await NotificationService.markAllAsRead(userId);
+    res.status(200).json(count);
+  },
+);
 
-  if (!id) {
-    throw new Error('Notification ID is required');
-  }
+export const deleteNotification = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.uid;
+    const { id } = req.params;
 
-  const notification = await NotificationService.deleteNotification(id, userId);
-  res.status(200).json(notification);
-});
+    if (!id) {
+      throw new Error('Notification ID is required');
+    }
 
-export const getUnreadCount = asyncErrorHandler(async (req: Request, res: Response) => {
-  const userId = req.user!.uid;
+    const notification = await NotificationService.deleteNotification(
+      id,
+      userId,
+    );
+    res.status(200).json(notification);
+  },
+);
 
-  const count = await NotificationService.getUnreadCount(userId);
-  res.status(200).json({ count });
-});
+export const getUnreadCount = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.uid;
+
+    const count = await NotificationService.getUnreadCount(userId);
+    res.status(200).json({ count });
+  },
+);

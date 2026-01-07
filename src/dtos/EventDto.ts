@@ -1,32 +1,25 @@
 import { EventDocument } from '@models/Event';
 import { EventCategory } from 'types/EventCategory';
+import { FileType } from 'types/FileType';
+import {
+  CreateEventSchema,
+  UpdateEventSchema,
+} from 'validators/inputEventDataValidator';
 import { z } from 'zod';
 
-export const createEventSchema = z.object({
-  title: z.string().trim().min(3, 'Title is required.'),
-  date: z.coerce.date(),
-  time: z
-    .string()
-    .trim()
-    .regex(/^\d{2}:\d{2}$/, 'Time must be in HH:MM format.'),
-  location: z.string().trim().min(1, 'Location is required.'),
-  category: z.enum(Object.values(EventCategory) as [string, ...string[]]),
-  attendees: z.number().min(0).default(0),
-  capacity: z.number().min(1),
-  isRegistered: z.boolean().default(false),
-  organizer: z.string().trim().min(1, 'Organizer is required.'),
-  description: z.string().trim().min(1, 'Description is required.'),
-});
+export type CreateEventDto = z.infer<typeof CreateEventSchema>;
+export type UpdateEventDto = z.infer<typeof UpdateEventSchema>;
 
-export const updateEventSchema = createEventSchema.partial();
-
-export type CreateEventDto = z.infer<typeof createEventSchema>;
-export type UpdateEventDto = z.infer<typeof updateEventSchema>;
-
-export interface AttachmentDto {
+export interface CreateAttachmentDto {
   url: string;
   name: string;
-  fileType: string;
+  fileType: FileType;
+  size: number;
+}
+
+export interface ResponseAttachmentDto extends CreateAttachmentDto {
+  id: string;
+  uploadedAt: Date;
 }
 
 export class ResponseEventDto {
@@ -40,7 +33,7 @@ export class ResponseEventDto {
   public capacity: number;
   public organizer: string;
   public description: string;
-  public attachments: AttachmentDto[];
+  public attachments: ResponseAttachmentDto[];
   public createdAt: Date;
 
   constructor(event: EventDocument) {
@@ -54,8 +47,16 @@ export class ResponseEventDto {
     this.capacity = event.capacity;
     this.organizer = event.organizer;
     this.description = event.description;
-    this.attachments = event.attachments;
     this.createdAt = event.createdAt;
+
+    this.attachments = event.attachments.map((attachment) => ({
+      id: attachment._id.toString(),
+      url: attachment.url,
+      name: attachment.name,
+      fileType: attachment.fileType,
+      size: attachment.size,
+      uploadedAt: attachment.uploadedAt,
+    }));
   }
 
   static from(event: EventDocument): ResponseEventDto | null {

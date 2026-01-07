@@ -5,8 +5,8 @@ import { globalErrorHandler } from '@middlewares/errorMiddleware';
 import defaultRoutes from '@routes/defaultRoutes';
 import eventRoutes from '@routes/eventRoutes';
 import notificationRoutes from '@routes/notificationRoutes';
-import requestRoutes from '@routes/requestRoutes';
 import reviewRoutes from '@routes/reviewRoutes';
+import requestRoutes from '@routes/roleRequestRoutes';
 import userRoutes from '@routes/userRoutes';
 import { AppError } from '@utils/AppError';
 
@@ -22,7 +22,7 @@ app.use(`${baseUrlPrefix}`, defaultRoutes);
 app.use(`${baseUrlPrefix}/events`, eventRoutes);
 app.use(`${baseUrlPrefix}/reviews`, reviewRoutes);
 app.use(`${baseUrlPrefix}/users`, userRoutes);
-app.use(`${baseUrlPrefix}/requests`, requestRoutes);
+app.use(`${baseUrlPrefix}/role-requests`, requestRoutes);
 app.use(`${baseUrlPrefix}/notifications`, notificationRoutes);
 
 app.use((req, _res, _next) => {

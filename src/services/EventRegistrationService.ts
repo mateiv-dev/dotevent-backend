@@ -8,18 +8,20 @@ class EventRegistrationService {
     userId: string,
     eventId: string,
   ): Promise<RegistrationDocument> {
-    const user = await UserModel.findOne({ firebaseId: userId }).select(
-      '_id role',
-    );
+    const user = await UserModel.findById(userId).select('_id role');
 
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
-    const event = await EventModel.findById(eventId).select('_id');
+    const event = await EventModel.findById(eventId).select('_id author');
 
     if (!event) {
       throw new AppError('Event not found', 404);
+    }
+
+    if (event.author && event.author === userId) {
+      throw new AppError('You cannot register for your own event.', 409);
     }
 
     const registration = await RegistrationModel.findOne({
@@ -31,6 +33,11 @@ class EventRegistrationService {
       throw new AppError('The user is already registered for this event.', 409);
     }
 
+    const newRegistration = await RegistrationModel.create({
+      user: userId,
+      event: eventId,
+    });
+
     const updatedEvent = await EventModel.findByIdAndUpdate(
       eventId,
       { $inc: { attendees: 1 } },
@@ -40,11 +47,6 @@ class EventRegistrationService {
     if (!updatedEvent) {
       throw new AppError('Event not found during attendance update.', 404);
     }
-
-    const newRegistration = await RegistrationModel.create({
-      user: userId,
-      event: eventId,
-    });
 
     return newRegistration;
   }
@@ -75,15 +77,13 @@ class EventRegistrationService {
     return result;
   }
 
-  async getUserRegistrations(userId: string) {
+  async getUserRegistrations(userId: string): Promise<RegistrationDocument[]> {
     const registrations = await RegistrationModel.find({ user: userId })
       .populate('event')
+      .lean()
       .exec();
 
-    return registrations.map((reg) => ({
-      ...reg.toObject(),
-      event: reg.event,
-    }));
+    return registrations.filter((reg) => reg.event !== null);
   }
 
   async getRegistration(

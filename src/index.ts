@@ -1,9 +1,12 @@
-import dotenv from 'dotenv';
-import app from './app';
 import { connectMongoDB } from '@config/mongodb';
+import dotenv from 'dotenv';
 import { startReminderSystem } from 'jobs/eventReminderScheduler';
+import app from './app';
 
 dotenv.config();
+
+// const CHECK_REMINDER_INTERVAL = 60000 * 30; // 30 min
+const CHECK_REMINDER_INTERVAL = 15000; // 15 s
 
 (async () => {
   const PORT = process.env.PORT;
@@ -22,14 +25,13 @@ dotenv.config();
   try {
     await connectMongoDB(MONGODB_URI);
 
-    startReminderSystem(5000); // 1 min
+    startReminderSystem(CHECK_REMINDER_INTERVAL);
 
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);
     });
-  }
-  catch (error) {
+  } catch (error) {
     console.error('Fatal startup error:', error);
-    process.exit(1); 
+    process.exit(1);
   }
 })();

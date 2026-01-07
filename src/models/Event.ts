@@ -1,40 +1,61 @@
 import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
 import { EventCategory } from 'types/EventCategory';
 import { EventStatus } from 'types/EventStatus';
+import { FileType } from 'types/FileType';
 
-const attachmentSchema = new Schema(
+const AttachmentSchema = new Schema({
+  url: {
+    type: String,
+    trim: true,
+    required: true,
+  },
+  name: {
+    type: String,
+    trim: true,
+    required: true,
+  },
+  fileType: {
+    type: String,
+    enum: Object.values(FileType),
+    required: true,
+  },
+  size: {
+    type: Number,
+    required: true,
+  },
+  uploadedAt: {
+    type: Date,
+    default: Date.now,
+  },
+});
+
+const EventSchema = new Schema(
   {
-    url: { type: String, required: true },
-    name: { type: String, required: true },
-    fileType: {
+    author: {
       type: String,
-      enum: ['image', 'document'],
+      ref: 'User',
       required: true,
     },
-  },
-  { _id: false },
-);
 
-const eventSchema = new Schema(
-  {
     title: { type: String, required: true, trim: true },
     date: { type: Date, required: true },
     time: { type: String, required: true, trim: true },
     location: { type: String, required: true, trim: true },
     category: {
       type: String,
-      required: true,
       enum: Object.values(EventCategory),
+      required: true,
     },
     attendees: { type: Number, required: true, default: 0, min: 0 },
     capacity: { type: Number, required: true, min: 1 },
     status: {
       type: String,
-      trim: true,
       enum: Object.values(EventStatus),
       default: EventStatus.PENDING,
     },
     organizer: { type: String, required: true, trim: true },
+    description: { type: String, required: true, trim: true },
+
     faculty: {
       type: String,
       trim: true,
@@ -43,15 +64,16 @@ const eventSchema = new Schema(
       type: String,
       trim: true,
     },
-    description: { type: String, required: true, trim: true },
-    rejectionReason: {
+
+    titleImage: {
       type: String,
-      trim: true,
+      default: null,
     },
     attachments: {
-      type: [attachmentSchema],
+      type: [AttachmentSchema],
       default: [],
     },
+
     averageRating: {
       type: Number,
       default: 0,
@@ -60,13 +82,27 @@ const eventSchema = new Schema(
       type: Number,
       default: 0,
     },
+
+    proccesedBy: {
+      type: String,
+      ref: 'User',
+    },
+    rejectionReason: {
+      type: String,
+      trim: true,
+    },
   },
   {
     timestamps: true,
   },
 );
 
-export const EventModel = mongoose.model<EventDocument>('Event', eventSchema);
+EventSchema.index({ status: 1, createdAt: -1, _id: -1 });
 
-export type Event = InferSchemaType<typeof eventSchema>;
+export type Event = InferSchemaType<typeof EventSchema>;
 export type EventDocument = HydratedDocument<Event>;
+
+export type Attachment = InferSchemaType<typeof AttachmentSchema>;
+export type AttachmentDocument = HydratedDocument<Attachment>;
+
+export const EventModel = mongoose.model<EventDocument>('Event', EventSchema);

@@ -1,4 +1,4 @@
-import { UserDocument } from 'types/User';
+import { UserDocument } from '@models/User';
 
 export interface CreateUserDto {
   firebaseId: string;
@@ -18,7 +18,7 @@ export interface ReviewUserDto {
 }
 
 export class ResponseUserDto {
-  // public uid: string;
+  // public id: string;
   public name: string;
   public email: string;
   public role: string;
@@ -26,30 +26,29 @@ export class ResponseUserDto {
   public organizationName?: string;
   public represents?: string;
 
-  constructor(testUser: any) {
-    // this.uid = testUser.uid;
-    this.name = testUser.name;
-    this.email = testUser.email;
-    this.role = testUser.role;
+  constructor(user: UserDocument) {
+    // this.id = user._id;
+    this.name = user.name;
+    this.email = user.email;
+    this.role = user.role;
 
-    if (testUser.university) this.university = testUser.university;
-    if (testUser.organizationName)
-      this.organizationName = testUser.organizationName;
-    if (testUser.represents) this.represents = testUser.represents;
+    if (user.university) this.university = user.university;
+    if (user.organizationName) this.organizationName = user.organizationName;
+    if (user.represents) this.represents = user.represents;
   }
 
-  static from(testUser: UserDocument | null): ResponseUserDto | null {
-    if (!testUser) {
+  static from(user: UserDocument | null): ResponseUserDto | null {
+    if (!user) {
       return null;
     }
-    return new ResponseUserDto(testUser);
+    return new ResponseUserDto(user);
   }
 
-  static fromArray(testUsers: UserDocument[]): ResponseUserDto[] {
-    if (!testUsers) {
+  static fromArray(users: UserDocument[]): ResponseUserDto[] {
+    if (!users) {
       return [];
     }
 
-    return testUsers.map((user) => new ResponseUserDto(user));
+    return users.map((user) => new ResponseUserDto(user));
   }
 }

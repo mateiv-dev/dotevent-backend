@@ -1,34 +1,33 @@
-import mongoose, { Schema } from "mongoose";
-
-export interface FavoriteEventDocument extends Document {
-  user: string;
-  event: mongoose.Types.ObjectId;
-  reminderSent: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
 
 const FavoriteEventSchema: Schema = new Schema(
   {
     user: {
       type: String,
+      ref: 'User',
       required: true,
     },
-    event: { 
-      type: Schema.Types.ObjectId, 
-      ref: 'Event', 
-      required: true 
+    event: {
+      type: Schema.Types.ObjectId,
+      ref: 'Event',
+      required: true,
     },
-    reminderSent: { 
-      type: Boolean, 
-      default: false
-    }
+    reminderSent: {
+      type: Boolean,
+      default: false,
+    },
   },
   {
-    timestamps: true
-  }
+    timestamps: true,
+  },
 );
 
 FavoriteEventSchema.index({ user: 1, event: 1 }, { unique: true });
 
-export const FavoriteEventModel = mongoose.model<FavoriteEventDocument>('FavoriteEvent', FavoriteEventSchema);
+export type FovoriteEvent = InferSchemaType<typeof FavoriteEventSchema>;
+export type FavoriteEventDocument = HydratedDocument<FovoriteEvent>;
+
+export const FavoriteEventModel = mongoose.model<FavoriteEventDocument>(
+  'FavoriteEvent',
+  FavoriteEventSchema,
+);

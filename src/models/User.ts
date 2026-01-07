@@ -1,20 +1,11 @@
-import mongoose, { Schema } from 'mongoose';
+import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
 import { Role } from 'types/Role';
-import {
-  IAdmin,
-  IOrganizer,
-  IStudent,
-  IStudentRep,
-  IUserBase,
-  UserDocument,
-} from 'types/User';
 
-const baseUserSchema = new Schema<UserDocument>(
+const UserSchema = new Schema(
   {
-    firebaseId: {
+    _id: {
       type: String,
       required: true,
-      trim: true,
     },
     name: {
       type: String,
@@ -35,66 +26,36 @@ const baseUserSchema = new Schema<UserDocument>(
       enum: Object.values(Role),
       default: Role.SIMPLE_USER,
     },
+    university: {
+      type: String,
+      trim: true,
+      required: function (this: any) {
+        return [Role.STUDENT, Role.STUDENT_REP].includes(this.role);
+      },
+    },
+    represents: {
+      type: String,
+      trim: true,
+      required: function (this: any) {
+        return this.role === Role.STUDENT_REP;
+      },
+    },
+    organizationName: {
+      type: String,
+      trim: true,
+      required: function (this: any) {
+        return this.role === Role.ORGANIZER;
+      },
+    },
   },
   {
     timestamps: true,
-    discriminatorKey: 'role',
     collection: 'users',
+    _id: false,
   },
 );
 
-export const UserModel = mongoose.model<UserDocument>('User', baseUserSchema);
+export type User = InferSchemaType<typeof UserSchema>;
+export type UserDocument = HydratedDocument<User>;
 
-const simpleUserDiscriminatorSchema = new Schema<IUserBase>({});
-
-export const SimpleUserModel = UserModel.discriminator<IUserBase>(
-  Role.SIMPLE_USER,
-  simpleUserDiscriminatorSchema,
-);
-
-const studentSchema = new Schema<IStudent>({
-  university: {
-    type: String,
-    required: true,
-  },
-});
-
-export const StudentModel = UserModel.discriminator<IStudent>(
-  Role.STUDENT,
-  studentSchema,
-);
-
-const studentRepSchema = new Schema<IStudentRep>({
-  university: {
-    type: String,
-    required: true,
-  },
-  represents: {
-    type: String,
-    required: true,
-  },
-});
-
-export const StudentRepModel = UserModel.discriminator<IStudentRep>(
-  Role.STUDENT_REP,
-  studentRepSchema,
-);
-
-const organizerSchema = new Schema<IOrganizer>({
-  organizationName: {
-    type: String,
-    required: true,
-  },
-});
-
-export const OrganizerModel = UserModel.discriminator<IOrganizer>(
-  Role.ORGANIZER,
-  organizerSchema,
-);
-
-const adminSchema = new Schema<IAdmin>();
-
-export const AdminModel = UserModel.discriminator<IAdmin>(
-  Role.ADMIN,
-  adminSchema,
-);
+export const UserModel = mongoose.model<UserDocument>('User', UserSchema);

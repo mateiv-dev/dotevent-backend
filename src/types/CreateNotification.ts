@@ -1,4 +1,4 @@
-import { NotificationType } from "types/NotificationType";
+import { NotificationType } from 'types/NotificationType';
 
 export interface CreateNotification {
   user: string;

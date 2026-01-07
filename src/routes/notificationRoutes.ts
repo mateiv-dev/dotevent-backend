@@ -1,12 +1,12 @@
-import { Router } from 'express';
-import { requireAuth } from '@middlewares/authMiddleware';
 import {
-  getNotifications,
-  markAsRead,
-  markAllAsRead,
   deleteNotification,
-  getUnreadCount
+  getNotifications,
+  getUnreadCount,
+  markAllAsRead,
+  markAsRead,
 } from '@controllers/notificationController';
+import { requireAuth } from '@middlewares/authMiddleware';
+import { Router } from 'express';
 
 const router = Router();
 
@@ -16,6 +16,6 @@ router.get('/', getNotifications);
 router.get('/unread-count', getUnreadCount);
 router.put('/:id/read', markAsRead);
 router.put('/read-all', markAllAsRead);
-router.delete('/:id', deleteNotification);
+router.delete('/:eventId', deleteNotification);
 
 export default router;

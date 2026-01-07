@@ -1,22 +1,22 @@
+import { MAX_FILES_COUNT } from '@config/storage';
 import { approveEvent, rejectEvent } from '@controllers/adminController';
-import {
-  addReview,
-  deleteReview,
-  getEventReviews,
-} from '@controllers/reviewController';
-import { getFavoriteEvents } from '@controllers/userController';
+import { addReview, getEventReviews } from '@controllers/reviewController';
 import { createReviewSchema } from '@dtos/ReviewDto';
-import { upload } from '@middlewares/multerMiddleware';
 import { requireRoles } from '@middlewares/roleMiddleware';
+import { handleFileUpload } from '@middlewares/uploadMiddleware';
 import { validate } from '@middlewares/validateInputData';
 import { Router } from 'express';
 import { Role } from 'types/Role';
+import {
+  CreateEventSchema,
+  UpdateEventSchema,
+} from 'validators/inputEventDataValidator';
 import {
   addEventToFavorites,
   createEvent,
   deleteEvent,
   getEvent,
-  getFilteredEvents,
+  getEvents,
   getPendingEvents,
   registerParticipant,
   removeEventFromFavorites,
@@ -25,18 +25,39 @@ import {
 } from '../controllers/eventController';
 import { requireAuth } from '../middlewares/authMiddleware';
 
-const MAX_FILES_COUNT = 10;
-
 const router = Router();
 
-router.get('/', getFilteredEvents);
-router.get(
-  '/favorites',
-  requireAuth,
-  requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
-  getFavoriteEvents,
-);
+// Events
+
+router.get('/', getEvents);
 router.get('/:id', getEvent);
+
+router.post(
+  '/',
+  requireAuth,
+  requireRoles([Role.ORGANIZER, Role.STUDENT_REP]),
+  handleFileUpload('files', MAX_FILES_COUNT),
+  validate(CreateEventSchema),
+  createEvent,
+);
+
+router.put(
+  '/:eventId',
+  requireAuth,
+  requireRoles([Role.ORGANIZER, Role.STUDENT_REP]),
+  handleFileUpload('files', MAX_FILES_COUNT),
+  validate(UpdateEventSchema),
+  updateEvent,
+);
+
+router.delete(
+  '/:id',
+  requireAuth,
+  requireRoles([Role.ORGANIZER, Role.STUDENT_REP]),
+  deleteEvent,
+);
+
+// Reviews
 
 router.get('/:eventId/reviews', getEventReviews);
 
@@ -48,12 +69,7 @@ router.post(
   addReview,
 );
 
-router.delete(
-  '/:eventId/reviews/:reviewId',
-  requireAuth,
-  requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
-  deleteReview,
-);
+// Favorites
 
 router.post(
   '/:id/favorite',
@@ -67,6 +83,8 @@ router.delete(
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
   removeEventFromFavorites,
 );
+
+// Pending
 
 router.get(
   '/pending',
@@ -87,26 +105,7 @@ router.post(
   rejectEvent,
 );
 
-router.post(
-  '/',
-  requireAuth,
-  requireRoles([Role.ORGANIZER, Role.STUDENT_REP]),
-  upload.array('files', MAX_FILES_COUNT),
-  createEvent,
-);
-router.put(
-  '/:id',
-  requireAuth,
-  requireRoles([Role.ORGANIZER, Role.STUDENT_REP]),
-  upload.array('files', MAX_FILES_COUNT),
-  updateEvent,
-);
-router.delete(
-  '/:id',
-  requireAuth,
-  requireRoles([Role.ORGANIZER, Role.STUDENT_REP]),
-  deleteEvent,
-);
+// Event Registration
 
 router.post(
   '/:id/register',

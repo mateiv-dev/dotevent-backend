@@ -1,14 +1,16 @@
+import { MAX_FILES_COUNT, MAX_FILES_SIZE_MB } from '@config/storage';
 import { AppError } from '@utils/AppError';
 import { ErrorRequestHandler, NextFunction, Request, Response } from 'express';
+import { MulterError } from 'multer';
 import { ZodError } from 'zod';
 
-type AsyncController = (
+type AsyncMiddleware = (
   req: Request,
   res: Response,
   next: NextFunction,
 ) => Promise<any>;
 
-export const asyncErrorHandler = (fn: AsyncController) => {
+export const asyncErrorHandler = (fn: AsyncMiddleware) => {
   return (req: Request, res: Response, next: NextFunction) => {
     Promise.resolve(fn(req, res, next)).catch((error) => next(error));
   };
@@ -26,8 +28,41 @@ export const globalErrorHandler: ErrorRequestHandler = (
   let error = err;
 
   if (err instanceof ZodError) {
-    const firstMessage = err.issues[0]?.message || 'Invalid data';
-    error = new AppError(firstMessage, 500);
+    const validationErrors = err.issues.map((issue) => ({
+      field: issue.path.join('.'),
+      message: issue.message,
+    }));
+
+    error = new AppError('Validation failed', 400, validationErrors);
+  }
+
+  if (err instanceof MulterError) {
+    if (err.code === 'LIMIT_FILE_SIZE') {
+      error = new AppError(
+        `File is too large. Max limit is ${MAX_FILES_SIZE_MB} MB.`,
+        400,
+      );
+    } else if (err.code === 'LIMIT_FILE_COUNT') {
+      error = new AppError(
+        `Too many files. You can upload a maximum of ${MAX_FILES_COUNT} files at once.`,
+        400,
+      );
+    } else if (err.code === 'LIMIT_UNEXPECTED_FILE') {
+      error = new AppError(
+        'Too many files uploaded or invalid field name.',
+        400,
+      );
+    } else {
+      error = new AppError(`File upload error: ${err.message}`, 400);
+    }
+  }
+
+  // 3. Eroarea ta custom din fileFilter (care e Error generic)
+  if (err.message === 'UNSUPORTED_FILE_FORMAT') {
+    error = new AppError(
+      'Invalid file format. Only images and docs are allowed.',
+      400,
+    );
   }
 
   if (error.code) {
@@ -55,9 +90,12 @@ export const globalErrorHandler: ErrorRequestHandler = (
     error = new AppError('Internal server configuration error.', 500);
   }
 
+  const validationErrors = (error as AppError).errors;
+
   res.status(error.statusCode).json({
     status: error.status,
     message: error.message,
+    errors: validationErrors,
     stack: process.env.NODE_ENV === 'development' ? error.stack : undefined,
   });
 };

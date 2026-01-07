@@ -1,59 +1,78 @@
-import mongoose, { Schema, Types } from 'mongoose';
+import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
 import { Role } from 'types/Role';
 import { RoleRequestStatus } from 'types/RoleRequestStatus';
-import { RequestDocument } from 'types/RoleRequest';
 
-const roleRequestSchema = new Schema<RequestDocument>({
-    user: { 
-      type: Schema.Types.ObjectId, 
-      ref: 'User', 
-      required: true
+const RoleRequestSchema = new Schema(
+  {
+    user: {
+      type: String,
+      ref: 'User',
+      required: true,
     },
     requestedRole: {
       type: String,
       required: true,
       trim: true,
-      enum: [Role.ORGANIZER, Role.STUDENT_REP] 
+      enum: [Role.ORGANIZER, Role.STUDENT_REP],
     },
-    status: { 
+    status: {
       type: String,
-      trim: true, 
-      enum: Object.values(RoleRequestStatus), 
-      default: RoleRequestStatus.PENDING
+      trim: true,
+      enum: Object.values(RoleRequestStatus),
+      default: RoleRequestStatus.PENDING,
     },
     university: {
       type: String,
-      trim: true, 
-      required: function() { return this.requestedRole === Role.STUDENT_REP; }
+      trim: true,
+      required: function (this: any) {
+        return this.requestedRole === Role.STUDENT_REP;
+      },
     },
     represents: {
       type: String,
       trim: true,
-      required: function() { return this.requestedRole === Role.STUDENT_REP; }
+      required: function (this: any) {
+        return this.requestedRole === Role.STUDENT_REP;
+      },
     },
     organizationName: {
       type: String,
       trim: true,
-      required: function() { return this.requestedRole === Role.ORGANIZER; }
+      required: function (this: any) {
+        return this.requestedRole === Role.ORGANIZER;
+      },
     },
     description: {
       type: String,
       trim: true,
-      required: true
+      required: true,
     },
-    rejectionReason: { 
+    rejectionReason: {
       type: String,
-      trim: true
-    }
+      trim: true,
+    },
+    proccessedBy: {
+      type: String,
+      ref: 'User',
+    },
   },
-  { 
-    timestamps: true
-  }
+  {
+    timestamps: true,
+  },
 );
 
-roleRequestSchema.index(
-  { user: 1, status: 1 }, 
-  { unique: true, partialFilterExpression: { status: RoleRequestStatus.PENDING } }
+RoleRequestSchema.index(
+  { user: 1, status: 1 },
+  {
+    unique: true,
+    partialFilterExpression: { status: RoleRequestStatus.PENDING },
+  },
 );
 
-export const RoleRequestModel = mongoose.model('RoleRequest', roleRequestSchema);
+export type RoleRequest = InferSchemaType<typeof RoleRequestSchema>;
+export type RoleRequestDocument = HydratedDocument<RoleRequest>;
+
+export const RoleRequestModel = mongoose.model<RoleRequestDocument>(
+  'RoleRequest',
+  RoleRequestSchema,
+);

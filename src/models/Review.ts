@@ -1,23 +1,10 @@
 import { ReviewUserDto } from '@dtos/UserDto';
-import mongoose, { Document, Schema } from 'mongoose';
-
-export interface ReviewDocument extends Document {
-  id: string;
-  user: mongoose.Types.ObjectId | ReviewUserDto;
-  event: mongoose.Types.ObjectId;
-  rating: number;
-  comment?: string;
-  createdAt: Date;
-}
-
-export interface PopulatedReviewDocument extends Omit<ReviewDocument, 'user'> {
-  user: ReviewUserDto;
-}
+import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
 
 const ReviewSchema = new Schema(
   {
     user: {
-      type: Schema.Types.ObjectId,
+      type: String,
       ref: 'User',
       required: true,
     },
@@ -43,6 +30,13 @@ const ReviewSchema = new Schema(
 );
 
 ReviewSchema.index({ user: 1, event: 1 }, { unique: true });
+
+export type Review = InferSchemaType<typeof ReviewSchema>;
+export type ReviewDocument = HydratedDocument<Review>;
+
+export type PopulatedReviewDocument = Omit<ReviewDocument, 'user'> & {
+  user: ReviewUserDto;
+};
 
 export const ReviewModel = mongoose.model<ReviewDocument>(
   'Review',

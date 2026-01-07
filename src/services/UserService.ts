@@ -1,20 +1,9 @@
 import firebase from '@config/firebase';
 import { CreateUserDto, UpdateUserDto } from '@dtos/UserDto';
-import { UserModel } from '@models/User';
+import { UserDocument, UserModel } from '@models/User';
 import { AppError } from '@utils/AppError';
+import { UNIVERSITY_DOMAINS } from '@utils/universities';
 import { Role } from 'types/Role';
-import { UserDocument } from 'types/User';
-
-interface UniversityMap {
-  [key: string]: string;
-}
-
-export const UNIVERSITY_DOMAINS: UniversityMap = {
-  usv: 'Universitatea Ștefan cel Mare din Suceava',
-  ase: 'Academia de Studii Economice din București',
-  poli: 'Universitatea Politehnica din București',
-  ubb: 'Universitatea Babeș-Bolyai din Cluj-Napoca',
-};
 
 const studentDomainRegex = /^[a-zA-Z0-9._%+-]+@student\.([a-zA-Z0-9-]+)\.ro$/;
 
@@ -34,29 +23,19 @@ class UserService {
       throw new AppError('User not found', 404);
     }
 
-    return user;
-  }
-
-  async getUserByFirebaseId(id: string): Promise<UserDocument | null> {
-    const user = await UserModel.findOne({ firebaseId: id }).lean().exec();
-
-    if (!user) {
-      throw new AppError('User not found', 404);
-    }
+    await firebase.auth().setCustomUserClaims(id, { role: user.role });
 
     return user;
   }
 
-  async getMe(firebaseId: string): Promise<UserDocument | null> {
-    const user = await UserModel.findOne({ firebaseId: firebaseId }).exec();
+  async userExists(id: string): Promise<boolean> {
+    const user = await UserModel.findById(id).select('_id').lean().exec();
 
-    if (!user) {
-      throw new AppError('User not found', 404);
+    if (user) {
+      return true;
     }
 
-    await firebase.auth().setCustomUserClaims(firebaseId, { role: user.role });
-
-    return user;
+    return false;
   }
 
   async createUser(
@@ -65,7 +44,6 @@ class UserService {
   ): Promise<UserDocument> {
     const { firebaseId } = userData;
     let roleToAssign = Role.SIMPLE_USER;
-
     let university: string | undefined = undefined;
 
     if (adminKey !== undefined && adminKey !== null) {
@@ -75,12 +53,6 @@ class UserService {
 
       if (adminKey.trim() !== process.env.ADMIN_KEY) {
         throw new AppError('Incorrect admin secret key', 403);
-      }
-
-      const existedAdmin = await UserModel.exists({ role: Role.ADMIN });
-
-      if (existedAdmin) {
-        throw new AppError('Admin already exists', 409);
       }
 
       roleToAssign = Role.ADMIN;
@@ -100,18 +72,22 @@ class UserService {
       }
     }
 
-    const newUser = await UserModel.create({
-      ...userData,
+    const newUser = new UserModel({
+      _id: firebaseId,
+      email: userData.email,
+      name: userData.name,
       role: roleToAssign,
       university: university,
     });
+
+    await newUser.save();
 
     try {
       await firebase
         .auth()
         .setCustomUserClaims(firebaseId, { role: roleToAssign });
     } catch (firebaseError) {
-      await UserModel.deleteOne({ firebaseId });
+      await UserModel.findByIdAndDelete(firebaseId);
       throw new AppError('Failed to set user claims on Firebase.', 500);
     }
 
@@ -119,18 +95,15 @@ class UserService {
   }
 
   async deleteUser(id: string): Promise<UserDocument | null> {
-    const user = UserModel.findOneAndDelete({ firebaseId: id }).exec();
+    const user = UserModel.findByIdAndDelete(id).lean().exec();
 
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
-    return user;
-  }
-
-  async deleteMe(id: string): Promise<UserDocument | null> {
     await firebase.auth().deleteUser(id);
-    return await UserModel.findOneAndDelete({ firebaseId: id }).exec();
+
+    return user;
   }
 
   async updateUser(id: string, incomingData: UpdateUserDto) {
@@ -187,8 +160,8 @@ class UserService {
     return await user.save();
   }
 
-  async syncEmail(firebaseId: string, newEmail: string): Promise<UserDocument> {
-    const user = await UserModel.findOne({ firebaseId: firebaseId });
+  async syncEmail(id: string, newEmail: string): Promise<UserDocument> {
+    const user = await UserModel.findById(id);
 
     if (!user) {
       throw new AppError('User not found', 404);

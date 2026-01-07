@@ -15,13 +15,11 @@ class ReviewService {
       throw new AppError('Invalid review data', 400);
     }
 
-    const user = await UserService.getUserByFirebaseId(userId);
+    const user = await UserService.getUser(userId);
 
     if (!user) {
       throw new AppError('User not found', 404);
     }
-
-    console.log(eventId);
 
     const event = await EventService.getEvent(eventId);
 
@@ -35,7 +33,7 @@ class ReviewService {
     );
 
     const alreadyReviewed = await ReviewModel.findOne({
-      user: user._id,
+      user: userId,
       event: eventId,
     });
 
@@ -71,7 +69,7 @@ class ReviewService {
     }
 
     const review = new ReviewModel({
-      user: user._id,
+      user: userId,
       event: eventId,
       rating: reviewData.rating,
       comment: reviewData.comment?.trim() || undefined,
@@ -96,8 +94,8 @@ class ReviewService {
     return reviews as unknown as PopulatedReviewDocument[];
   }
 
-  async deleteReview(firebaseId: string, reviewId: string): Promise<void> {
-    if (!firebaseId) {
+  async deleteReview(userId: string, reviewId: string): Promise<void> {
+    if (!userId) {
       throw new AppError('User ID is required', 400);
     }
 
@@ -111,24 +109,23 @@ class ReviewService {
       throw new AppError('Review not found', 404);
     }
 
-    const user = await UserService.getUserByFirebaseId(firebaseId);
+    const user = await UserService.getUser(userId);
 
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
-    if (user._id.toString() !== review.user.toString()) {
+    if (userId !== review.user.toString()) {
       throw new AppError(
         'You do not have permission to delete this review',
         403,
       );
     }
 
-    const eventId = review.event.toString();
-
-    const event = await EventService.getEvent(eventId);
-
     await ReviewModel.findByIdAndDelete(reviewId);
+
+    const eventId = review.event.toString();
+    const event = await EventService.getEvent(eventId);
 
     if (event) {
       await EventService.updateRating(eventId);

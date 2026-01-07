@@ -5,5 +5,5 @@ export enum NotificationType {
   ROLE_REJECTED = 'role_rejected',
   EVENT_REMINDER = 'event_reminder',
   EVENT_UPDATED = 'event_updated',
-  EVENT_DELETED = 'event_updated',
+  EVENT_DELETED = 'event_deleted',
 }
