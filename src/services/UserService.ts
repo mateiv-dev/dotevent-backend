@@ -154,7 +154,8 @@ class UserService {
         allowedFields = { name: incomingData.name };
     }
 
-    const finalUpdateData = JSON.parse(JSON.stringify(allowedFields));
+    const finalUpdateData = structuredClone(allowedFields);
+
     Object.assign(user, finalUpdateData);
 
     return await user.save();
