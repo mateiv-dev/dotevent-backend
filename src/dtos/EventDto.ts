@@ -26,6 +26,8 @@ export interface ResponseEventAuthorDto {
   name: string;
   email: string;
   role: string;
+  represents: string;
+  organizationName: string;
 }
 
 export interface ResponseEventProccessedByDto {
@@ -63,6 +65,8 @@ export class ResponseEventDto {
       name: event.author.name,
       email: event.author.email,
       role: event.author.role,
+      represents: event.author.represents ?? null,
+      organizationName: event.author.organizationName ?? null,
     };
 
     this.id = event._id.toString();

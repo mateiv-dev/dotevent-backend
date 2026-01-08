@@ -27,7 +27,10 @@ export interface EventFilters {
 }
 
 export const EVENT_POPULATE_OPTIONS = [
-  { path: 'author', select: '-_id name email role' },
+  {
+    path: 'author',
+    select: '-_id name email role represents organizationName',
+  },
   { path: 'proccessedBy', select: '-_id name email' },
 ];
 
