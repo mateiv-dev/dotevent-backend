@@ -5,8 +5,9 @@ import app from './app';
 
 dotenv.config();
 
-// const CHECK_REMINDER_INTERVAL = 60000 * 30; // 30 min
-const CHECK_REMINDER_INTERVAL = 10000; // 10 s
+// const REMINDER_CHECK_INTERVAL = 1000 * 60 * 30; // 30 min
+const REMINDER_CHECK_INTERVAL = 1000 * 30; // 30 s
+const REMINDER_WINDOW_HOURS = 24;
 
 (async () => {
   const PORT = process.env.PORT;
@@ -25,7 +26,7 @@ const CHECK_REMINDER_INTERVAL = 10000; // 10 s
   try {
     await connectMongoDB(MONGODB_URI);
 
-    startReminderSystem(CHECK_REMINDER_INTERVAL);
+    startReminderSystem(REMINDER_CHECK_INTERVAL, REMINDER_WINDOW_HOURS);
 
     app.listen(PORT, () => {
       console.log(`Server running on http://localhost:${PORT}`);

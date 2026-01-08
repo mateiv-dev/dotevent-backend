@@ -5,7 +5,6 @@ import {
 } from '@dtos/EventDto';
 import { EventModel, PopulatedEventDocument } from '@models/Event';
 import { FavoriteEventModel } from '@models/FavoriteEvent';
-import { NotificationModel } from '@models/Notification';
 import { RegistrationModel } from '@models/Registration';
 import { ReviewModel } from '@models/Review';
 import { AppError } from '@utils/AppError';
@@ -33,6 +32,7 @@ export const EVENT_POPULATE_OPTIONS = [
 ];
 
 const SORT_DIRECTION = -1;
+const DELETE_EVENT_HOURS_LIMIT = 24;
 
 class EventService {
   async getFilteredEvents(
@@ -332,6 +332,19 @@ class EventService {
       throw new AppError('Event not found', 404);
     }
 
+    const now = new Date();
+    const eventDate = new Date(event.date);
+
+    const diffInMilliseconds = eventDate.getTime() - now.getTime();
+    const diffInHours = diffInMilliseconds / (1000 * 60 * 60);
+
+    if (diffInHours < DELETE_EVENT_HOURS_LIMIT) {
+      throw new AppError(
+        `Events cannot be deleted within ${DELETE_EVENT_HOURS_LIMIT} hours of starting.`,
+        400,
+      );
+    }
+
     if (event.attachments.length > 0) {
       const fileNames = event.attachments.map((file) => file.url);
       await StorageService.deleteFiles(fileNames);
@@ -350,25 +363,13 @@ class EventService {
     registrations.forEach((reg) => uniqueUserIds.add(reg.user!.toString()));
     favorites.forEach((fav) => uniqueUserIds.add(fav.user!.toString()));
 
-    const existingNotifications = await NotificationModel.find({
-      relatedEvent: id,
-      type: NotificationType.EVENT_DELETED,
-    }).select('user');
-
-    const notifiedUserIds = new Set(
-      existingNotifications.map((n) => n.user!.toString()),
-    );
-
-    const usersToNotify = Array.from(uniqueUserIds).filter(
-      (userId) => !notifiedUserIds.has(userId),
-    );
-
-    const notificationPromises = usersToNotify.map((userId) => {
+    const notificationPromises = Array.from(uniqueUserIds).map((userId) => {
       const notification: INotification = {
         user: userId,
         relatedEvent: id,
-        title: 'Event Deleted',
-        message: `We are sorry to inform you that the event '${event.title}' has been deleted by the organizer.`,
+        // title: 'Event Deleted',
+        // message: `We are sorry to inform you that the event '${event.title}' has been deleted by the organizer.`,
+        title: event.title,
         type: NotificationType.EVENT_DELETED,
       };
 
@@ -432,8 +433,8 @@ class EventService {
     if (savedEvent.author) {
       const notificationData: INotification = {
         user: savedEvent.author,
-        title: 'Event Approved',
-        message: `Your event "${event.title}" has been approved!`,
+        title: event.title,
+        // message: `Your event "${event.title}" has been approved!`,
         type: NotificationType.EVENT_APPROVED,
         relatedEvent: event._id.toString(),
       };
@@ -471,8 +472,8 @@ class EventService {
     if (savedEvent.author) {
       const notificationData: INotification = {
         user: savedEvent.author,
-        title: 'Event Rejected',
-        message: `Your event "${event.title}" has been rejected.`,
+        title: event.title,
+        // message: `Your event "${event.title}" has been rejected.`,
         type: NotificationType.EVENT_REJECTED,
         relatedEvent: event._id.toString(),
       };

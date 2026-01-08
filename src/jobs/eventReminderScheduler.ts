@@ -5,11 +5,21 @@ import NotificationService from '@services/NotificationService';
 import { INotification } from 'types/INotification';
 import { NotificationType } from 'types/NotificationType';
 
-const runReminderCheck = async () => {
+const getEventStartDate = (event: EventDocument): Date => {
+  const eventStart = new Date(event.date);
+  if (event.time) {
+    const [hours, minutes] = event.time.split(':');
+    eventStart.setHours(parseInt(hours!), parseInt(minutes!), 0, 0);
+  } else {
+    eventStart.setHours(0, 0, 0, 0);
+  }
+  return eventStart;
+};
+
+const runReminderCheck = async (hoursAhead: number) => {
   try {
-    const limitDate = new Date();
-    limitDate.setHours(limitDate.getHours() + 24);
     const now = new Date();
+    const limitDate = new Date(now.getTime() + hoursAhead * 60 * 60 * 1000);
 
     const registrations = await RegistrationModel.find({ reminderSent: false })
       .populate('event', '_id title date time')
@@ -17,22 +27,28 @@ const runReminderCheck = async () => {
 
     for (const reg of registrations) {
       try {
-        const event = reg.event as unknown as EventDocument;
-        if (!event) continue;
-
-        const eventStart = new Date(event.date);
-        if (event.time) {
-          const [hours, minutes] = event.time.split(':');
-          eventStart.setHours(parseInt(hours!), parseInt(minutes!), 0, 0);
+        if (!reg.event) {
+          reg.reminderSent = true;
+          await reg.save();
+          continue;
         }
 
-        if (eventStart <= limitDate && eventStart > now) {
+        const event = reg.event as unknown as EventDocument;
+        const eventStart = getEventStartDate(event);
+
+        if (eventStart < now) {
+          reg.reminderSent = true;
+          await reg.save();
+          continue;
+        }
+
+        if (eventStart <= limitDate) {
           const notification: INotification = {
             user: reg.user as string,
             relatedEvent: event._id.toString(),
-            title: 'Event Reminder',
-            message: `Don't forget! You have a ticket for '${event.title}' tomorrow.`,
-            type: NotificationType.EVENT_REMINDER,
+            title: event.title,
+            // message: `Don't forget! You have a ticket for '${event.title}' starting soon.`,
+            type: NotificationType.REGISTERED_EVENT_REMINDER,
           };
 
           await NotificationService.createNotification(notification);
@@ -42,7 +58,7 @@ const runReminderCheck = async () => {
         }
       } catch (err) {
         console.error(
-          `[Error] Failed to send reminder for Reg ID ${reg._id}:`,
+          `[Error] Failed to process registration ${reg._id}:`,
           err,
         );
       }
@@ -54,16 +70,22 @@ const runReminderCheck = async () => {
 
     for (const fav of favorites) {
       try {
-        const event = fav.event as unknown as EventDocument;
-        if (!event) continue;
-
-        const eventStart = new Date(event.date);
-        if (event.time) {
-          const [hours, minutes] = event.time.split(':');
-          eventStart.setHours(parseInt(hours!), parseInt(minutes!), 0);
+        if (!fav.event) {
+          fav.reminderSent = true;
+          await fav.save();
+          continue;
         }
 
-        if (eventStart <= limitDate && eventStart > now) {
+        const event = fav.event as unknown as EventDocument;
+        const eventStart = getEventStartDate(event);
+
+        if (eventStart < now) {
+          fav.reminderSent = true;
+          await fav.save();
+          continue;
+        }
+
+        if (eventStart <= limitDate) {
           const hasTicket = await RegistrationModel.exists({
             user: fav.user,
             event: event._id,
@@ -78,9 +100,9 @@ const runReminderCheck = async () => {
           const notification: INotification = {
             user: fav.user as string,
             relatedEvent: event._id.toString(),
-            title: 'Favorite Event',
-            message: `Reminder: Your favorite event '${event.title}' starts in 24 hours!`,
-            type: NotificationType.EVENT_REMINDER,
+            title: event.title,
+            // message: `Reminder: Your favorite event '${event.title}' starts in ${hoursAhead} hours!`,
+            type: NotificationType.FAVORITE_EVENT_REMINDER,
           };
 
           await NotificationService.createNotification(notification);
@@ -89,10 +111,7 @@ const runReminderCheck = async () => {
           await fav.save();
         }
       } catch (err) {
-        console.error(
-          `[Error] Failed to send favorite reminder for Fav ID ${fav._id}:`,
-          err,
-        );
+        console.error(`[Error] Failed to process favorite ${fav._id}:`, err);
       }
     }
   } catch (error) {
@@ -100,6 +119,9 @@ const runReminderCheck = async () => {
   }
 };
 
-export const startReminderSystem = (checkIntervalMs: number) => {
-  setInterval(runReminderCheck, checkIntervalMs);
+export const startReminderSystem = (
+  checkIntervalMs: number,
+  hoursAhead: number = 24,
+) => {
+  setInterval(() => runReminderCheck(hoursAhead), checkIntervalMs);
 };

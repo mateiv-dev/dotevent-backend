@@ -1,3 +1,7 @@
+import {
+  ResponseNotificationRelevatedEventDto,
+  ResponseNotificationRelevatedRequestDto,
+} from '@dtos/NotificationDto';
 import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
 import { NotificationType } from 'types/NotificationType';
 
@@ -10,12 +14,11 @@ const NotificationSchema: Schema = new Schema(
     },
     title: {
       type: String,
-      required: true,
       trim: true,
+      required: true,
     },
     message: {
       type: String,
-      required: true,
       trim: true,
     },
     type: {
@@ -45,6 +48,11 @@ NotificationSchema.index({ user: 1, createdAt: -1 });
 
 export type Notification = InferSchemaType<typeof NotificationSchema>;
 export type NotificationDocument = HydratedDocument<Notification>;
+
+export type PopulatedNotificationDocument = NotificationDocument & {
+  relatedEvent?: ResponseNotificationRelevatedEventDto;
+  relatedRequest?: ResponseNotificationRelevatedRequestDto;
+};
 
 export const NotificationModel = mongoose.model<NotificationDocument>(
   'Notification',

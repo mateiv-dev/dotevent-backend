@@ -72,3 +72,17 @@ export const getUnreadCount = asyncErrorHandler(
     res.status(200).json({ count });
   },
 );
+
+export const createEventUpdatedNotifications = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      throw new Error('Event ID is required');
+    }
+
+    await NotificationService.createEventUpdatedNotifications(eventId);
+
+    res.status(200).json();
+  },
+);

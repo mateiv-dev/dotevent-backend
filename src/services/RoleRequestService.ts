@@ -200,11 +200,12 @@ class RoleRequestService {
 
     const notificationData: INotification = {
       user: updatedUser._id,
-      title: 'Role Request Approved',
-      message: `Your request for ${request.requestedRole.replace(
-        '_',
-        ' ',
-      )} role has been approved!`,
+      title: request.requestedRole.toString(),
+      // title: 'Role Request Approved',
+      // message: `Your request for ${request.requestedRole.replace(
+      //   '_',
+      //   ' ',
+      // )} role has been approved!`,
       type: NotificationType.ROLE_APPROVED,
       relatedRequest: request._id.toString(),
     };
@@ -254,11 +255,11 @@ class RoleRequestService {
 
     const notificationData: INotification = {
       user: existingUser._id,
-      title: 'Role Request Rejected',
-      message: `Your request for ${request.requestedRole.replace(
-        '_',
-        ' ',
-      )} role has been rejected. Reason: ${rejectionReason}`,
+      title: request.requestedRole.toString(),
+      // message: `Your request for ${request.requestedRole.replace(
+      //   '_',
+      //   ' ',
+      // )} role has been rejected. Reason: ${rejectionReason}`,
       type: NotificationType.ROLE_REJECTED,
       relatedRequest: request._id.toString(),
     };
