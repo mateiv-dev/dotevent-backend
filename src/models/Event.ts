@@ -1,3 +1,7 @@
+import {
+  ResponseEventAuthorDto,
+  ResponseEventProccessedByDto,
+} from '@dtos/EventDto';
 import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
 import { EventCategory } from 'types/EventCategory';
 import { EventStatus } from 'types/EventStatus';
@@ -83,9 +87,12 @@ const EventSchema = new Schema(
       default: 0,
     },
 
-    proccesedBy: {
+    proccessedBy: {
       type: String,
       ref: 'User',
+    },
+    proccessedAt: {
+      type: Date,
     },
     rejectionReason: {
       type: String,
@@ -101,6 +108,11 @@ EventSchema.index({ status: 1, createdAt: -1, _id: -1 });
 
 export type Event = InferSchemaType<typeof EventSchema>;
 export type EventDocument = HydratedDocument<Event>;
+
+export type PopulatedEventDocument = EventDocument & {
+  author: ResponseEventAuthorDto;
+  proccessedBy?: ResponseEventProccessedByDto;
+};
 
 export type Attachment = InferSchemaType<typeof AttachmentSchema>;
 export type AttachmentDocument = HydratedDocument<Attachment>;

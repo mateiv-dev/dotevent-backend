@@ -21,7 +21,7 @@ class ReviewService {
       throw new AppError('User not found', 404);
     }
 
-    const event = await EventService.getEvent(eventId);
+    const event = await EventService.getPopulatedEvent(eventId);
 
     if (!event) {
       throw new AppError('Event not found', 404);
@@ -38,7 +38,7 @@ class ReviewService {
     });
 
     if (alreadyReviewed) {
-      throw new AppError('You have already reviewed this event', 400);
+      throw new AppError('You have already reviewed this event', 409);
     }
 
     if (!registration) {
@@ -48,15 +48,10 @@ class ReviewService {
     const eventStartTime = new Date(event.date);
 
     if (event.time) {
-      const timeParts = event.time.split(':');
-      if (timeParts.length === 2) {
-        const hours = parseInt(timeParts[0]!, 10);
-        const minutes = parseInt(timeParts[1]!, 10);
-
-        if (!isNaN(hours) && !isNaN(minutes)) {
-          eventStartTime.setHours(hours, minutes, 0, 0);
-        }
-      }
+      const [hours, minutes] = event.time.split(':');
+      eventStartTime.setHours(parseInt(hours!), parseInt(minutes!), 0, 0);
+    } else {
+      eventStartTime.setHours(0, 0, 0, 0);
     }
 
     const now = new Date();
@@ -64,7 +59,7 @@ class ReviewService {
     if (now < eventStartTime) {
       throw new AppError(
         'You cannot leave a review until the event has started.',
-        400,
+        409,
       );
     }
 
@@ -77,7 +72,7 @@ class ReviewService {
 
     await review.save();
 
-    await review.populate('user', 'name -_id');
+    await review.populate('user', '-_id name');
 
     await EventService.updateRating(eventId);
 
@@ -115,9 +110,9 @@ class ReviewService {
       throw new AppError('User not found', 404);
     }
 
-    if (userId !== review.user.toString()) {
+    if (userId !== review.user) {
       throw new AppError(
-        'You do not have permission to delete this review',
+        'You do not have permission to delete foreign review',
         403,
       );
     }
@@ -125,7 +120,7 @@ class ReviewService {
     await ReviewModel.findByIdAndDelete(reviewId);
 
     const eventId = review.event.toString();
-    const event = await EventService.getEvent(eventId);
+    const event = await EventService.getPopulatedEvent(eventId);
 
     if (event) {
       await EventService.updateRating(eventId);

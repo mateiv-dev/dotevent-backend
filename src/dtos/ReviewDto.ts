@@ -1,24 +1,16 @@
 import { PopulatedReviewDocument } from '@models/Review';
+import { createReviewSchema as CreateReviewSchema } from 'validators/inputReviewDataValidator';
 import z from 'zod';
-import { ReviewUserDto } from './UserDto';
 
-export const createReviewSchema = z.object({
-  rating: z
-    .number()
-    .min(1, 'Rating must be at least 1')
-    .max(5, 'Rating cannot be higher than 5'),
-  comment: z
-    .string()
-    .trim()
-    .max(500, 'Comment is too long (max 500 chars)')
-    .nullish(),
-});
+export type CreateReviewDto = z.infer<typeof CreateReviewSchema>;
 
-export type CreateReviewDto = z.infer<typeof createReviewSchema>;
+export interface ResponseReviewUserDto {
+  name: string;
+}
 
 export class ResponseReviewDto {
   public id: string;
-  public user: ReviewUserDto;
+  public user: ResponseReviewUserDto;
   public eventId: string;
   public rating: number;
   public comment?: string;
@@ -27,10 +19,11 @@ export class ResponseReviewDto {
   constructor(reviewDocument: PopulatedReviewDocument) {
     this.id = reviewDocument._id.toString();
 
-    this.user = {
+    const userData: ResponseReviewUserDto = {
       name: reviewDocument.user.name,
     };
 
+    this.user = userData;
     this.eventId = reviewDocument.event.toString();
     this.rating = reviewDocument.rating;
 

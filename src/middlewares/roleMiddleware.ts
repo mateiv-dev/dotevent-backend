@@ -1,10 +1,10 @@
-import { Request, Response, NextFunction } from "express";
-import { asyncErrorHandler } from "./errorMiddleware";
-import { Role } from "types/Role";
-import { AppError } from "@utils/AppError";
+import { AppError } from '@utils/AppError';
+import { NextFunction, Request, Response } from 'express';
+import { Role } from 'types/Role';
+import { asyncErrorHandler } from './errorMiddleware';
 
-export const requireRoles = (allowedRoles: Role[]) => 
-  asyncErrorHandler(async (req: Request, res: Response, next: NextFunction) => {  
+export const requireRoles = (allowedRoles: Role[]) =>
+  asyncErrorHandler(async (req: Request, res: Response, next: NextFunction) => {
     // const firebaseId = req.user!.uid;
     // const user = await UserService.getMe(firebaseId);
 

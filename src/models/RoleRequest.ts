@@ -1,3 +1,7 @@
+import {
+  ResponseRoleRequestProccessedByDto,
+  ResponseRoleRequestUserDto,
+} from '@dtos/RoleRequestDto';
 import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
 import { Role } from 'types/Role';
 import { RoleRequestStatus } from 'types/RoleRequestStatus';
@@ -21,6 +25,7 @@ const RoleRequestSchema = new Schema(
       enum: Object.values(RoleRequestStatus),
       default: RoleRequestStatus.PENDING,
     },
+
     university: {
       type: String,
       trim: true,
@@ -42,11 +47,13 @@ const RoleRequestSchema = new Schema(
         return this.requestedRole === Role.ORGANIZER;
       },
     },
+
     description: {
       type: String,
       trim: true,
       required: true,
     },
+
     rejectionReason: {
       type: String,
       trim: true,
@@ -54,6 +61,9 @@ const RoleRequestSchema = new Schema(
     proccessedBy: {
       type: String,
       ref: 'User',
+    },
+    proccessedAt: {
+      type: Date,
     },
   },
   {
@@ -71,6 +81,11 @@ RoleRequestSchema.index(
 
 export type RoleRequest = InferSchemaType<typeof RoleRequestSchema>;
 export type RoleRequestDocument = HydratedDocument<RoleRequest>;
+
+export type PopulatedRoleRequestDocument = HydratedDocument<RoleRequest> & {
+  user: ResponseRoleRequestUserDto;
+  proccessedBy?: ResponseRoleRequestProccessedByDto;
+};
 
 export const RoleRequestModel = mongoose.model<RoleRequestDocument>(
   'RoleRequest',

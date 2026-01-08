@@ -1,4 +1,5 @@
 import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
+import { EventDocument } from './Event';
 
 const FavoriteEventSchema: Schema = new Schema(
   {
@@ -26,6 +27,10 @@ FavoriteEventSchema.index({ user: 1, event: 1 }, { unique: true });
 
 export type FovoriteEvent = InferSchemaType<typeof FavoriteEventSchema>;
 export type FavoriteEventDocument = HydratedDocument<FovoriteEvent>;
+
+export type PopulatedFavoriteEventDocument = HydratedDocument<FovoriteEvent> & {
+  event: EventDocument;
+};
 
 export const FavoriteEventModel = mongoose.model<FavoriteEventDocument>(
   'FavoriteEvent',

@@ -4,13 +4,13 @@ import {
   getUser,
   getUserEvents,
   getUserFavoriteEvents,
-  getUserRegisteredEvents,
+  getUserRegistration,
+  getUserRegistrations,
   getUsers,
   createUser as registerUser,
   syncEmail,
   updateUser,
 } from '@controllers/userController';
-import { requireAdmin } from '@middlewares/adminMiddleware';
 import { requireAuth } from '@middlewares/authMiddleware';
 import { requireRoles } from '@middlewares/roleMiddleware';
 import { Router } from 'express';
@@ -18,7 +18,7 @@ import { Role } from 'types/Role';
 
 const router = Router();
 
-router.get('/', requireAuth, requireAdmin, getUsers);
+router.get('/', requireAuth, requireRoles([Role.ADMIN]), getUsers);
 
 router.get('/me', requireAuth, getUser);
 router.post('/register', requireAuth, registerUser);
@@ -41,23 +41,28 @@ router.get(
 );
 
 router.get(
-  '/me/registered-events',
-  requireAuth,
-  requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
-  getUserRegisteredEvents,
-);
-
-router.get(
   '/me/registrations',
   requireAuth,
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
-  getUserRegisteredEvents,
+  getUserRegistrations,
+);
+
+router.get(
+  '/me/registrations/:eventId',
+  requireAuth,
+  requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
+  getUserRegistration,
 );
 
 router.get(
   '/me/role-requests',
   requireAuth,
-  requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
+  requireRoles([
+    Role.SIMPLE_USER,
+    Role.STUDENT,
+    Role.STUDENT_REP,
+    Role.ORGANIZER,
+  ]),
   getUserRoleRequests,
 );
 

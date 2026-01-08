@@ -1,26 +1,41 @@
 import { EventModel } from '@models/Event';
-import { RegistrationDocument, RegistrationModel } from '@models/Registration';
-import { UserModel } from '@models/User';
+import {
+  PopulatedRegistrationDocument,
+  RegistrationModel,
+} from '@models/Registration';
 import { AppError } from '@utils/AppError';
+import EventService, { EVENT_POPULATE_OPTIONS } from './EventService';
+import UserService from './UserService';
+
+const REGISTRATION_POPULATE_CONFIG = [
+  {
+    path: 'user',
+    select: '-_id name email',
+  },
+  {
+    path: 'event',
+    populate: EVENT_POPULATE_OPTIONS,
+  },
+];
 
 class EventRegistrationService {
   async registerParticipant(
     userId: string,
     eventId: string,
-  ): Promise<RegistrationDocument> {
-    const user = await UserModel.findById(userId).select('_id role');
+  ): Promise<PopulatedRegistrationDocument> {
+    const user = await UserService.userExists(userId);
 
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
-    const event = await EventModel.findById(eventId).select('_id author');
+    const event = await EventService.getEvent(eventId);
 
     if (!event) {
       throw new AppError('Event not found', 404);
     }
 
-    if (event.author && event.author === userId) {
+    if (event.author === userId) {
       throw new AppError('You cannot register for your own event.', 409);
     }
 
@@ -48,13 +63,12 @@ class EventRegistrationService {
       throw new AppError('Event not found during attendance update.', 404);
     }
 
-    return newRegistration;
+    await newRegistration.populate(REGISTRATION_POPULATE_CONFIG);
+
+    return newRegistration as unknown as PopulatedRegistrationDocument;
   }
 
-  async unregisterParticipant(
-    userId: string,
-    eventId: string,
-  ): Promise<RegistrationDocument> {
+  async unregisterParticipant(userId: string, eventId: string): Promise<void> {
     const result = await RegistrationModel.findOneAndDelete({
       user: userId,
       event: eventId,
@@ -73,31 +87,38 @@ class EventRegistrationService {
     if (!updatedEvent) {
       throw new AppError('Event not found during attendance update.', 404);
     }
-
-    return result;
   }
 
-  async getUserRegistrations(userId: string): Promise<RegistrationDocument[]> {
+  async getUserRegistrations(
+    userId: string,
+  ): Promise<PopulatedRegistrationDocument[]> {
     const registrations = await RegistrationModel.find({ user: userId })
-      .populate('event')
+      .populate(REGISTRATION_POPULATE_CONFIG)
       .lean()
       .exec();
 
-    return registrations.filter((reg) => reg.event !== null);
+    return registrations.filter(
+      (reg) => reg.event !== null,
+    ) as unknown as PopulatedRegistrationDocument[];
   }
 
   async getRegistration(
     userId: string,
     eventId: string,
-  ): Promise<RegistrationDocument | null> {
+  ): Promise<PopulatedRegistrationDocument | null> {
     const registration = await RegistrationModel.findOne({
       user: userId,
       event: eventId,
     })
-      .populate('event')
+      .populate(REGISTRATION_POPULATE_CONFIG)
+      .lean()
       .exec();
 
-    return registration;
+    if (!registration) {
+      throw new AppError('Registration not found.', 400);
+    }
+
+    return registration as unknown as PopulatedRegistrationDocument;
   }
 }
 

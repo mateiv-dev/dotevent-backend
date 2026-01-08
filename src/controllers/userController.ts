@@ -1,9 +1,11 @@
 import { ResponseEventDto } from '@dtos/EventDto';
+import { ResponseRegistrationDto } from '@dtos/RegistrationDto';
 import { CreateUserDto, ResponseUserDto, UpdateUserDto } from '@dtos/UserDto';
 import { asyncErrorHandler } from '@middlewares/errorMiddleware';
 import EventRegistrationService from '@services/EventRegistrationService';
 import EventService from '@services/EventService';
 import UserService from '@services/UserService';
+import { AppError } from '@utils/AppError';
 import { Request, Response } from 'express';
 
 export const getUsers = asyncErrorHandler(
@@ -71,11 +73,11 @@ export const getUserEvents = asyncErrorHandler(
   async (req: Request, res: Response) => {
     const userId = req.user!.uid;
     const events = await EventService.getUserEvents(userId);
-    return res.status(200).json(events);
+    res.status(200).json(ResponseEventDto.fromArray(events));
   },
 );
 
-export const getUserRegisteredEvents = asyncErrorHandler(
+export const getUserRegistrations = asyncErrorHandler(
   async (req: Request, res: Response) => {
     const userId = req.user!.uid;
 
@@ -83,11 +85,27 @@ export const getUserRegisteredEvents = asyncErrorHandler(
       userId,
     );
 
-    const events = registrations.map((reg) =>
-      ResponseEventDto.from(reg.event as any),
+    return res
+      .status(200)
+      .json(ResponseRegistrationDto.fromArray(registrations));
+  },
+);
+
+export const getUserRegistration = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.uid;
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      throw new AppError('Event ID is required.', 400);
+    }
+
+    const registration = await EventRegistrationService.getRegistration(
+      userId,
+      eventId,
     );
 
-    return res.status(200).json(events);
+    return res.status(200).json(ResponseRegistrationDto.from(registration!));
   },
 );
 

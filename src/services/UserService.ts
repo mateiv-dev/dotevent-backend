@@ -17,13 +17,13 @@ class UserService {
   }
 
   async getUser(id: string): Promise<UserDocument | null> {
-    const user = await UserModel.findById(id).lean().exec();
+    const user = await UserModel.findById(id).exec();
 
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
-    await firebase.auth().setCustomUserClaims(id, { role: user.role });
+    // await firebase.auth().setCustomUserClaims(id, { role: user.role });
 
     return user;
   }

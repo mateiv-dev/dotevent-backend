@@ -9,32 +9,28 @@ export interface CreateUserDto {
 export interface UpdateUserDto {
   name?: string;
   university?: string;
-  organizationName?: string;
   represents?: string;
-}
-
-export interface ReviewUserDto {
-  name: string;
+  organizationName?: string;
 }
 
 export class ResponseUserDto {
   // public id: string;
   public name: string;
   public email: string;
-  public role: string;
-  public university?: string;
-  public organizationName?: string;
-  public represents?: string;
+  // public role: string;
+  public university: string | null;
+  public represents: string | null;
+  public organizationName: string | null;
 
   constructor(user: UserDocument) {
     // this.id = user._id;
     this.name = user.name;
     this.email = user.email;
-    this.role = user.role;
+    // this.role = user.role;
 
-    if (user.university) this.university = user.university;
-    if (user.organizationName) this.organizationName = user.organizationName;
-    if (user.represents) this.represents = user.represents;
+    this.university = user.university ?? null;
+    this.represents = user.represents ?? null;
+    this.organizationName = user.organizationName ?? null;
   }
 
   static from(user: UserDocument | null): ResponseUserDto | null {

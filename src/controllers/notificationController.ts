@@ -1,3 +1,4 @@
+import { ResponseNotificationDto } from '@dtos/NotificationDto';
 import { asyncErrorHandler } from '@middlewares/errorMiddleware';
 import NotificationService from '@services/NotificationService';
 import { AppError } from '@utils/AppError';
@@ -14,7 +15,7 @@ export const getNotifications = asyncErrorHandler(
       limit,
     );
 
-    res.status(200).json(notifications);
+    res.status(200).json(ResponseNotificationDto.fromArray(notifications));
   },
 );
 
@@ -32,7 +33,8 @@ export const markAsRead = asyncErrorHandler(
     }
 
     const notification = await NotificationService.markAsRead(id, userId);
-    res.status(200).json(notification);
+
+    res.status(200).json(ResponseNotificationDto.from(notification));
   },
 );
 
@@ -41,24 +43,23 @@ export const markAllAsRead = asyncErrorHandler(
     const userId = req.user!.uid;
 
     const count = await NotificationService.markAllAsRead(userId);
-    res.status(200).json(count);
+
+    res.status(200).json({ count });
   },
 );
 
 export const deleteNotification = asyncErrorHandler(
   async (req: Request, res: Response) => {
     const userId = req.user!.uid;
-    const { id } = req.params;
+    const { notificationId } = req.params;
 
-    if (!id) {
+    if (!notificationId) {
       throw new Error('Notification ID is required');
     }
 
-    const notification = await NotificationService.deleteNotification(
-      id,
-      userId,
-    );
-    res.status(200).json(notification);
+    await NotificationService.deleteNotification(userId, notificationId);
+
+    res.status(200).json();
   },
 );
 
@@ -67,6 +68,7 @@ export const getUnreadCount = asyncErrorHandler(
     const userId = req.user!.uid;
 
     const count = await NotificationService.getUnreadCount(userId);
+
     res.status(200).json({ count });
   },
 );

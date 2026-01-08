@@ -1,7 +1,5 @@
 import { MAX_FILES_COUNT } from '@config/storage';
-import { approveEvent, rejectEvent } from '@controllers/adminController';
 import { addReview, getEventReviews } from '@controllers/reviewController';
-import { createReviewSchema } from '@dtos/ReviewDto';
 import { requireRoles } from '@middlewares/roleMiddleware';
 import { handleFileUpload } from '@middlewares/uploadMiddleware';
 import { validate } from '@middlewares/validateInputData';
@@ -11,14 +9,17 @@ import {
   CreateEventSchema,
   UpdateEventSchema,
 } from 'validators/inputEventDataValidator';
+import { createReviewSchema as CreateReviewSchema } from 'validators/inputReviewDataValidator';
 import {
   addEventToFavorites,
+  approveEvent,
   createEvent,
   deleteEvent,
   getEvent,
   getEvents,
   getPendingEvents,
   registerParticipant,
+  rejectEvent,
   removeEventFromFavorites,
   unregisterParticipant,
   updateEvent,
@@ -30,7 +31,15 @@ const router = Router();
 // Events
 
 router.get('/', getEvents);
-router.get('/:id', getEvent);
+
+router.get(
+  '/pending',
+  requireAuth,
+  requireRoles([Role.ADMIN]),
+  getPendingEvents,
+);
+
+router.get('/:eventId', getEvent);
 
 router.post(
   '/',
@@ -51,13 +60,13 @@ router.put(
 );
 
 router.delete(
-  '/:id',
+  '/:eventId',
   requireAuth,
   requireRoles([Role.ORGANIZER, Role.STUDENT_REP]),
   deleteEvent,
 );
 
-// Reviews
+// Event Reviews
 
 router.get('/:eventId/reviews', getEventReviews);
 
@@ -65,41 +74,35 @@ router.post(
   '/:eventId/reviews',
   requireAuth,
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
-  validate(createReviewSchema),
+  validate(CreateReviewSchema),
   addReview,
 );
 
-// Favorites
+// Favorite Events
 
 router.post(
-  '/:id/favorite',
+  '/:eventId/favorite',
   requireAuth,
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
   addEventToFavorites,
 );
 router.delete(
-  '/:id/favorite',
+  '/:eventId/favorite',
   requireAuth,
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
   removeEventFromFavorites,
 );
 
-// Pending
+// Event Proccessing
 
-router.get(
-  '/pending',
-  requireAuth,
-  requireRoles([Role.ADMIN]),
-  getPendingEvents,
-);
 router.post(
-  '/:id/approve',
+  '/:eventId/approve',
   requireAuth,
   requireRoles([Role.ADMIN]),
   approveEvent,
 );
 router.post(
-  '/:id/reject',
+  '/:eventId/reject',
   requireAuth,
   requireRoles([Role.ADMIN]),
   rejectEvent,
@@ -108,13 +111,13 @@ router.post(
 // Event Registration
 
 router.post(
-  '/:id/register',
+  '/:eventId/register',
   requireAuth,
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
   registerParticipant,
 );
 router.delete(
-  '/:id/register',
+  '/:eventId/register',
   requireAuth,
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
   unregisterParticipant,

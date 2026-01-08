@@ -1,4 +1,4 @@
-import { ReviewUserDto } from '@dtos/UserDto';
+import { ResponseReviewUserDto } from '@dtos/ReviewDto';
 import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
 
 const ReviewSchema = new Schema(
@@ -34,8 +34,8 @@ ReviewSchema.index({ user: 1, event: 1 }, { unique: true });
 export type Review = InferSchemaType<typeof ReviewSchema>;
 export type ReviewDocument = HydratedDocument<Review>;
 
-export type PopulatedReviewDocument = Omit<ReviewDocument, 'user'> & {
-  user: ReviewUserDto;
+export type PopulatedReviewDocument = ReviewDocument & {
+  user: ResponseReviewUserDto;
 };
 
 export const ReviewModel = mongoose.model<ReviewDocument>(

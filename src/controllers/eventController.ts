@@ -6,7 +6,6 @@ import {
 import { asyncErrorHandler } from '@middlewares/errorMiddleware';
 import EventRegistrationService from '@services/EventRegistrationService';
 import EventService, { EventFilters } from '@services/EventService';
-import FavoriteEventService from '@services/FavoriteEventService';
 import { AppError } from '@utils/AppError';
 import { Request, Response } from 'express';
 import { EventStatus } from 'types/EventStatus';
@@ -32,19 +31,19 @@ export const getEvents = asyncErrorHandler(
 export const getPendingEvents = asyncErrorHandler(
   async (_req: Request, res: Response) => {
     const events = await EventService.getEventsByStatus(EventStatus.PENDING);
-    res.status(200).json(events);
+    res.status(200).json(ResponseEventDto.fromArray(events));
   },
 );
 
 export const getEvent = asyncErrorHandler(
   async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const { eventId } = req.params;
 
-    if (!id) {
+    if (!eventId) {
       throw new AppError('Event ID is required', 400);
     }
 
-    const event = await EventService.getEvent(id);
+    const event = await EventService.getPopulatedEvent(eventId);
 
     res.status(200).json(ResponseEventDto.from(event!));
   },
@@ -68,13 +67,13 @@ export const createEvent = asyncErrorHandler(
 
 export const deleteEvent = asyncErrorHandler(
   async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const { eventId } = req.params;
 
-    if (!id) {
+    if (!eventId) {
       throw new AppError('Invalid event ID format supplied', 400);
     }
 
-    await EventService.deleteEvent(id);
+    await EventService.deleteEvent(eventId);
 
     res.status(200).json();
   },
@@ -82,20 +81,65 @@ export const deleteEvent = asyncErrorHandler(
 
 export const updateEvent = asyncErrorHandler(
   async (req: Request, res: Response) => {
-    const { id } = req.params;
+    const userId = req.user!.uid;
+    const { eventId } = req.params;
     const updateEventData: UpdateEventDto = req.body;
 
-    if (!id) {
-      throw new AppError('Invalid event ID format supplied', 400);
+    if (!eventId) {
+      throw new AppError('Invalid Event ID format supplied', 400);
     }
 
-    const updatedEvent = await EventService.updateEvent(id, updateEventData);
+    const updatedEvent = await EventService.updateEvent(
+      userId,
+      eventId,
+      updateEventData,
+    );
 
     if (!updatedEvent) {
       throw new AppError('Event not found', 404);
     }
 
     res.status(200).json(ResponseEventDto.from(updatedEvent));
+  },
+);
+
+export const approveEvent = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const adminId = req.user!.uid;
+    const { eventId } = req.params;
+
+    if (!eventId || eventId?.trim().length === 0) {
+      throw new AppError("Parameter 'id' is required", 400);
+    }
+
+    const event = await EventService.approveEvent(adminId, eventId);
+
+    res.status(200).json(ResponseEventDto.from(event));
+  },
+);
+
+export const rejectEvent = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const adminId = req.user!.uid;
+    const { eventId } = req.params;
+
+    if (!eventId || eventId?.trim().length === 0) {
+      throw new AppError("Parameter 'id' is required", 400);
+    }
+
+    const { rejectionReason } = req.body;
+
+    if (!rejectionReason || rejectionReason.trim().length === 0) {
+      throw new AppError("Field 'rejectionReason' is required", 400);
+    }
+
+    const event = await EventService.rejectEvent(
+      adminId,
+      eventId,
+      rejectionReason,
+    );
+
+    res.status(200).json(ResponseEventDto.from(event));
   },
 );
 
@@ -117,7 +161,7 @@ export const registerParticipant = asyncErrorHandler(
       eventId,
     );
 
-    res.status(200).json(registration.ticketCode);
+    res.status(200).json(registration);
   },
 );
 
@@ -136,20 +180,20 @@ export const unregisterParticipant = asyncErrorHandler(
 
     await EventRegistrationService.unregisterParticipant(userId, eventId);
 
-    res.status(200).send();
+    res.status(200).json();
   },
 );
 
 export const addEventToFavorites = asyncErrorHandler(
   async (req: Request, res: Response) => {
-    const firebaseId = req.user!.uid;
+    const userId = req.user!.uid;
     const { eventId } = req.params;
 
     if (!eventId || eventId?.trim().length === 0) {
       throw new AppError("Parameter 'eventId' is required", 400);
     }
 
-    const event = await FavoriteEventService.markFavorite(firebaseId, eventId);
+    const event = await EventService.markFavoriteEvent(userId, eventId);
 
     res.status(200).json(ResponseEventDto.from(event));
   },
@@ -157,14 +201,14 @@ export const addEventToFavorites = asyncErrorHandler(
 
 export const removeEventFromFavorites = asyncErrorHandler(
   async (req: Request, res: Response) => {
-    const firebaseId = req.user!.uid;
+    const userId = req.user!.uid;
     const { eventId } = req.params;
 
     if (!eventId || eventId?.trim().length === 0) {
       throw new AppError("Parameter 'eventId' is required", 400);
     }
 
-    await FavoriteEventService.unmarkFavorite(firebaseId, eventId);
+    await EventService.unmarkFavoriteEvent(userId, eventId);
 
     res.status(200).json();
   },

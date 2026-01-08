@@ -16,6 +16,6 @@ router.get('/', getNotifications);
 router.get('/unread-count', getUnreadCount);
 router.put('/:id/read', markAsRead);
 router.put('/read-all', markAllAsRead);
-router.delete('/:eventId', deleteNotification);
+router.delete('/:notificationId', deleteNotification);
 
 export default router;

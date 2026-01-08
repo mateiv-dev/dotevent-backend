@@ -7,7 +7,7 @@ import { Role } from 'types/Role';
 const router = Router();
 
 router.delete(
-  '/reviews/:reviewId',
+  '/:reviewId',
   requireAuth,
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
   deleteReview,

@@ -6,7 +6,7 @@ import app from './app';
 dotenv.config();
 
 // const CHECK_REMINDER_INTERVAL = 60000 * 30; // 30 min
-const CHECK_REMINDER_INTERVAL = 15000; // 15 s
+const CHECK_REMINDER_INTERVAL = 10000; // 10 s
 
 (async () => {
   const PORT = process.env.PORT;
