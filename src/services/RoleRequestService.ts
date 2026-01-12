@@ -119,15 +119,18 @@ class RoleRequestService {
     }
   }
 
-  async deleteRoleRequest(userId: string): Promise<void> {
-    const roleRequest = await RoleRequestModel.findOneAndDelete({
+  async deleteRoleRequest(userId: string, requestId: string): Promise<void> {
+    const roleRequest = await RoleRequestModel.findOne({
+      _id: requestId,
       user: userId,
       status: RoleRequestStatus.PENDING,
     });
 
     if (!roleRequest) {
-      throw new AppError('No pending role request found for this user.', 404);
+      throw new AppError('No pending role request found with this ID.', 404);
     }
+
+    await RoleRequestModel.findByIdAndDelete(requestId);
   }
 
   async approveRoleRequest(

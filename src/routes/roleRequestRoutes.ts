@@ -28,7 +28,7 @@ router.post(
 );
 
 router.delete(
-  '/',
+  '/:requestId',
   requireAuth,
   requireRoles([
     Role.SIMPLE_USER,

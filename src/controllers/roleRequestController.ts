@@ -41,7 +41,13 @@ export const createRoleRequest = asyncErrorHandler(
 export const deleteRoleRequest = asyncErrorHandler(
   async (req: Request, res: Response) => {
     const userId = req.user!.uid;
-    await RoleRequestService.deleteRoleRequest(userId);
+    const { requestId } = req.params;
+
+    if (!requestId || requestId?.trim().length === 0) {
+      throw new AppError('Request ID is required', 400);
+    }
+
+    await RoleRequestService.deleteRoleRequest(userId, requestId);
     return res.status(200).json();
   },
 );
