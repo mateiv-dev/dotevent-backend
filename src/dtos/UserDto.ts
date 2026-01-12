@@ -17,7 +17,7 @@ export class ResponseUserDto {
   // public id: string;
   public name: string;
   public email: string;
-  // public role: string;
+  public role: string;
   public university: string | null;
   public represents: string | null;
   public organizationName: string | null;
@@ -26,7 +26,7 @@ export class ResponseUserDto {
     // this.id = user._id;
     this.name = user.name;
     this.email = user.email;
-    // this.role = user.role;
+    this.role = user.role;
 
     this.university = user.university ?? null;
     this.represents = user.represents ?? null;
