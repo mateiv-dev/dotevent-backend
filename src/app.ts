@@ -16,14 +16,12 @@ app.use(cors());
 app.use(express.json());
 app.use('/uploads', express.static('uploads'));
 
-const baseUrlPrefix = '/api';
-
-app.use(`${baseUrlPrefix}`, defaultRoutes);
-app.use(`${baseUrlPrefix}/events`, eventRoutes);
-app.use(`${baseUrlPrefix}/reviews`, reviewRoutes);
-app.use(`${baseUrlPrefix}/users`, userRoutes);
-app.use(`${baseUrlPrefix}/role-requests`, requestRoutes);
-app.use(`${baseUrlPrefix}/notifications`, notificationRoutes);
+app.use(defaultRoutes);
+app.use(`/events`, eventRoutes);
+app.use(`/reviews`, reviewRoutes);
+app.use(`/users`, userRoutes);
+app.use(`/role-requests`, requestRoutes);
+app.use(`/notifications`, notificationRoutes);
 
 app.use((req, _res, _next) => {
   throw new AppError(
