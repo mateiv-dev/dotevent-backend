@@ -11,7 +11,7 @@ export const CreateEventSchema = z.object({
   location: z.string().trim().min(2, 'Location is required.'),
   category: z.enum(Object.values(EventCategory) as [string, ...string[]]),
   capacity: z.coerce.number().min(1, 'Capacity must be at least 1.'),
-  organizer: z.string().trim().min(2, 'Organizer is required.'),
+  // organizer: z.string().trim().min(2, 'Organizer is required.'),
   description: z.string().trim().min(2, 'Description is required.'),
   faculty: z
     .string()

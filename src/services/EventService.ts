@@ -3,7 +3,11 @@ import {
   CreateEventDto,
   UpdateEventDto,
 } from '@dtos/EventDto';
-import { EventModel, PopulatedEventDocument } from '@models/Event';
+import {
+  EventModel,
+  PendingEventModel,
+  PopulatedEventDocument,
+} from '@models/Event';
 import { FavoriteEventModel } from '@models/FavoriteEvent';
 import { RegistrationModel } from '@models/Registration';
 import { ReviewModel } from '@models/Review';
@@ -15,6 +19,7 @@ import { INotification } from 'types/INotification';
 import { NotificationType } from 'types/NotificationType';
 import NotificationService from './NotificationService';
 import StorageService from './StorageService';
+import UserService from './UserService';
 
 export interface EventFilters {
   eventType?: string;
@@ -29,9 +34,10 @@ export interface EventFilters {
 export const EVENT_POPULATE_OPTIONS = [
   {
     path: 'author',
-    select: '-_id name email role represents organizationName',
+    select: '-_id name email role',
   },
   { path: 'proccessedBy', select: '-_id name email' },
+  { path: 'updatedBy', select: '-_id name email' },
 ];
 
 const SORT_DIRECTION = -1;
@@ -143,6 +149,40 @@ class EventService {
     return userEvents as unknown as PopulatedEventDocument[];
   }
 
+  async getUserOrganizationEvents(
+    userId: string,
+  ): Promise<PopulatedEventDocument[]> {
+    const user = await UserService.getUser(userId);
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const conditions = [];
+
+    if (user.represents) {
+      conditions.push({ 'organizer.represents': user.represents });
+    }
+
+    if (user.organizationName) {
+      conditions.push({ 'organizer.organizationName': user.organizationName });
+    }
+
+    if (conditions.length === 0) {
+      return [];
+    }
+
+    const organizationEvents = await EventModel.find({
+      $or: conditions,
+    })
+      .sort({ date: SORT_DIRECTION })
+      .populate(EVENT_POPULATE_OPTIONS)
+      .lean()
+      .exec();
+
+    return organizationEvents as unknown as PopulatedEventDocument[];
+  }
+
   async getUserFavoriteEvents(
     userId: string,
   ): Promise<PopulatedEventDocument[]> {
@@ -181,6 +221,12 @@ class EventService {
     files?: Express.Multer.File[],
   ): Promise<PopulatedEventDocument> {
     try {
+      const user = await UserService.getUser(userId);
+
+      if (!user) {
+        throw new AppError('User not found.', 404);
+      }
+
       const eventDate = this.getValidatedEventDate(
         newEventData.date,
         newEventData.time,
@@ -219,6 +265,11 @@ class EventService {
         date: eventDate,
         attachments: attachments,
         titleImage: titleImageUrl,
+        organizer: {
+          represents: user.represents ?? undefined,
+          organizationName: user.organizationName ?? undefined,
+        },
+        targetEventId: null,
       });
 
       const savedEvent = await newEvent.save();
@@ -242,41 +293,88 @@ class EventService {
     newEventData: UpdateEventDto,
     newFiles: Express.Multer.File[] = [],
   ): Promise<PopulatedEventDocument | null> {
-    const event = await EventModel.findById(eventId).exec();
+    const user = await UserService.getUser(userId);
 
-    if (!event) {
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const originalEvent = await EventModel.findById(eventId).exec();
+
+    if (!originalEvent) {
       const fileNames = newFiles.map((file) => file.filename);
       await StorageService.deleteFiles(fileNames);
       throw new AppError('Event not found', 404);
     }
 
-    if (userId !== event.author) {
-      throw new AppError('You cannot modify the foreign event', 409);
+    const isLocked = await PendingEventModel.exists({ targetEventId: eventId });
+
+    if (isLocked) {
+      const fileNames = newFiles.map((file) => file.filename);
+      await StorageService.deleteFiles(fileNames);
+
+      throw new AppError(
+        'This event already has a pending modification request.',
+        400,
+      );
+    }
+
+    const matchesRepresentation =
+      user.represents &&
+      originalEvent.organizer.represents &&
+      user.represents === originalEvent.organizer.represents;
+
+    const matchesOrganization =
+      user.organizationName &&
+      originalEvent.organizer.organizationName &&
+      user.organizationName === originalEvent.organizer.organizationName;
+
+    if (!matchesRepresentation && !matchesOrganization) {
+      throw new AppError(
+        'You do not have permission to modify this event.',
+        403,
+      );
+    }
+
+    const eventTime = new Date(originalEvent.date);
+    const [hours, minutes] = originalEvent.time.split(':').map(Number);
+    eventTime.setHours(hours!, minutes!, 0, 0);
+
+    const now = new Date();
+    now.setSeconds(0, 0);
+
+    if (eventTime <= now) {
+      throw new AppError(
+        'You cannot modify an event that has already occurred.',
+        400,
+      );
     }
 
     if (newEventData.date || newEventData.time) {
-      const finalDate = newEventData.date || event.date;
-      const finalTime = newEventData.time || event.time;
-      event.date = this.getValidatedEventDate(finalDate, finalTime);
-      event.time = finalTime;
+      const finalDate = newEventData.date || originalEvent.date;
+      const finalTime = newEventData.time || originalEvent.time;
+      originalEvent.date = this.getValidatedEventDate(finalDate, finalTime);
+      originalEvent.time = finalTime;
     }
 
     const deleteAttachments = newEventData.deleteAttachments;
 
     if (deleteAttachments && deleteAttachments.length > 0) {
-      const filesToDelete = event.attachments.filter((a) =>
+      const filesToDelete = originalEvent.attachments.filter((a) =>
         deleteAttachments.includes(a._id.toString()),
       );
 
       const filePaths = filesToDelete.map((file) => file.url);
       await StorageService.deleteFiles(filePaths);
 
-      deleteAttachments.forEach((id) => event.attachments.pull({ _id: id }));
+      deleteAttachments.forEach((id) => {
+        originalEvent.attachments.pull({ _id: id });
+      });
     }
 
     try {
       StorageService.validateFileLimit(
-        event.attachments.length,
+        originalEvent.attachments.length,
         newFiles.length,
       );
     } catch (error) {
@@ -287,45 +385,63 @@ class EventService {
 
     if (newFiles.length > 0) {
       const newAttachments = StorageService.processUploadedFiles(newFiles);
-      event.attachments.push(...newAttachments);
+      originalEvent.attachments.push(...newAttachments);
     }
 
-    StorageService.sortAttachments(event.attachments);
+    StorageService.sortAttachments(originalEvent.attachments);
 
-    const currentTitleStillExists = event.attachments.some(
-      (a) => a.url === event.titleImage,
+    const currentTitleStillExists = originalEvent.attachments.some(
+      (a) => a.url === originalEvent.titleImage,
     );
 
     if (newEventData.titleImageName) {
-      const selectedTitle = event.attachments.find(
+      const selectedTitle = originalEvent.attachments.find(
         (a) => a.name === newEventData.titleImageName,
       );
       if (selectedTitle) {
-        event.titleImage = selectedTitle.url;
+        originalEvent.titleImage = selectedTitle.url;
       }
     } else if (!currentTitleStillExists) {
-      const firstAvailableImage = event.attachments.find(
+      const firstAvailableImage = originalEvent.attachments.find(
         (a) => a.fileType === FileType.IMAGE,
       );
-      event.titleImage = (
-        firstAvailableImage ? firstAvailableImage.url : null
-      ) as string;
+      originalEvent.titleImage = firstAvailableImage
+        ? firstAvailableImage.url
+        : null;
     }
 
-    const updates = { ...newEventData };
+    const updates = {
+      ...newEventData,
+      updatedBy: userId,
+      targetEventId: originalEvent._id,
+    };
 
     delete updates.deleteAttachments;
     delete updates.titleImageName;
     delete updates.date;
     delete updates.time;
 
-    Object.assign(event, updates);
+    Object.assign(originalEvent, updates);
 
-    const savedEvent = await event.save();
+    const pendingEventData = originalEvent.toObject();
 
-    await savedEvent.populate(EVENT_POPULATE_OPTIONS);
+    delete (pendingEventData as any).__v;
+    delete (pendingEventData as any).createdAt;
+    delete (pendingEventData as any).updatedAt;
 
-    return savedEvent.toObject() as unknown as PopulatedEventDocument;
+    const eventCopy = new PendingEventModel({
+      ...pendingEventData,
+      _id: originalEvent._id, // Păstrăm același ID
+      targetEventId: originalEvent._id,
+      status: EventStatus.PENDING,
+    });
+
+    eventCopy.isNew = true;
+    await eventCopy.save();
+
+    await eventCopy.populate(EVENT_POPULATE_OPTIONS);
+
+    return eventCopy.toObject() as unknown as PopulatedEventDocument;
   }
 
   async deleteEvent(id: string): Promise<void> {

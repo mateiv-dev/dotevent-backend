@@ -95,7 +95,7 @@ class UserService {
   }
 
   async deleteUser(id: string): Promise<UserDocument | null> {
-    const user = UserModel.findByIdAndDelete(id).lean().exec();
+    const user = await UserModel.findByIdAndDelete(id).lean().exec();
 
     if (!user) {
       throw new AppError('User not found', 404);

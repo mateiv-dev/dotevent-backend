@@ -2,8 +2,8 @@ import { getUserRoleRequests } from '@controllers/roleRequestController';
 import {
   deleteUser,
   getUser,
-  getUserEvents,
   getUserFavoriteEvents,
+  getUserOrganizationEvents,
   getUserRegistration,
   getUserRegistrations,
   getUsers,
@@ -30,7 +30,14 @@ router.get(
   '/me/events',
   requireAuth,
   requireRoles([Role.STUDENT_REP, Role.ORGANIZER]),
-  getUserEvents,
+  getUserOrganizationEvents,
+);
+
+router.get(
+  '/me/events/organization',
+  requireAuth,
+  requireRoles([Role.STUDENT_REP, Role.ORGANIZER]),
+  getUserOrganizationEvents,
 );
 
 router.get(

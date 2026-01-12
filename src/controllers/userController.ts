@@ -77,6 +77,14 @@ export const getUserEvents = asyncErrorHandler(
   },
 );
 
+export const getUserOrganizationEvents = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.uid;
+    const events = await EventService.getUserOrganizationEvents(userId);
+    res.status(200).json(ResponseEventDto.fromArray(events));
+  },
+);
+
 export const getUserRegistrations = asyncErrorHandler(
   async (req: Request, res: Response) => {
     const userId = req.user!.uid;

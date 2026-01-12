@@ -33,6 +33,14 @@ const AttachmentSchema = new Schema({
   },
 });
 
+const OrganizerSchema = new Schema(
+  {
+    represents: { type: String, trim: true },
+    organizationName: { type: String, trim: true },
+  },
+  { _id: false },
+);
+
 const EventSchema = new Schema(
   {
     author: {
@@ -57,7 +65,10 @@ const EventSchema = new Schema(
       enum: Object.values(EventStatus),
       default: EventStatus.PENDING,
     },
-    organizer: { type: String, required: true, trim: true },
+    organizer: {
+      type: OrganizerSchema,
+      required: true,
+    },
     description: { type: String, required: true, trim: true },
 
     faculty: {
@@ -98,6 +109,17 @@ const EventSchema = new Schema(
       type: String,
       trim: true,
     },
+
+    updatedBy: {
+      type: String,
+      ref: 'User',
+    },
+
+    targetEventId: {
+      type: mongoose.Types.ObjectId,
+      ref: 'Event',
+      default: null,
+    },
   },
   {
     timestamps: true,
@@ -106,15 +128,25 @@ const EventSchema = new Schema(
 
 EventSchema.index({ status: 1, createdAt: -1, _id: -1 });
 
-export type Event = InferSchemaType<typeof EventSchema>;
+type InferredEvent = InferSchemaType<typeof EventSchema>;
+
+export type Event = Omit<InferredEvent, 'titleImage'> & {
+  titleImage: string | null;
+};
+
 export type EventDocument = HydratedDocument<Event>;
 
 export type PopulatedEventDocument = EventDocument & {
   author: ResponseEventAuthorDto;
   proccessedBy?: ResponseEventProccessedByDto;
+  updatedBy?: ResponseEventProccessedByDto;
 };
 
 export type Attachment = InferSchemaType<typeof AttachmentSchema>;
 export type AttachmentDocument = HydratedDocument<Attachment>;
 
 export const EventModel = mongoose.model<EventDocument>('Event', EventSchema);
+export const PendingEventModel = mongoose.model<EventDocument>(
+  'PendingEvent',
+  EventSchema,
+);
