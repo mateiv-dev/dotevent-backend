@@ -7,6 +7,7 @@ import {
   EventModel,
   PendingEventModel,
   PopulatedEventDocument,
+  RejectedEventModel,
 } from '@models/Event';
 import { FavoriteEventModel } from '@models/FavoriteEvent';
 import { RegistrationModel } from '@models/Registration';
@@ -44,7 +45,7 @@ const SORT_DIRECTION = -1;
 const DELETE_EVENT_HOURS_LIMIT = 24;
 
 class EventService {
-  async getFilteredEvents(
+  async getFilteredApprovedEvents(
     filters: EventFilters = {},
   ): Promise<PopulatedEventDocument[]> {
     const query: any = {};
@@ -103,12 +104,30 @@ class EventService {
     return events as unknown as PopulatedEventDocument[];
   }
 
-  async getEventsByStatus(
-    status: EventStatus,
-  ): Promise<PopulatedEventDocument[]> {
+  async getApprovedEvents(): Promise<PopulatedEventDocument[]> {
     const events = await EventModel.find({
-      status: status,
+      status: EventStatus.APPROVED,
     })
+      .sort({ date: SORT_DIRECTION })
+      .populate(EVENT_POPULATE_OPTIONS)
+      .lean()
+      .exec();
+
+    return events as unknown as PopulatedEventDocument[];
+  }
+
+  async getPendingEvents(): Promise<PopulatedEventDocument[]> {
+    const events = await PendingEventModel.find()
+      .sort({ date: SORT_DIRECTION })
+      .populate(EVENT_POPULATE_OPTIONS)
+      .lean()
+      .exec();
+
+    return events as unknown as PopulatedEventDocument[];
+  }
+
+  async getRejectedEvents(): Promise<PopulatedEventDocument[]> {
+    const events = await RejectedEventModel.find()
       .sort({ date: SORT_DIRECTION })
       .populate(EVENT_POPULATE_OPTIONS)
       .lean()
@@ -125,6 +144,16 @@ class EventService {
     }
 
     return event as unknown as PopulatedEventDocument;
+  }
+
+  async eventExists(id: string): Promise<boolean> {
+    const event = await EventModel.findById(id).select('_id').lean().exec();
+
+    if (event) {
+      return true;
+    }
+
+    return false;
   }
 
   async getPopulatedEvent(id: string): Promise<PopulatedEventDocument | null> {
@@ -360,12 +389,13 @@ class EventService {
     const deleteAttachments = newEventData.deleteAttachments;
 
     if (deleteAttachments && deleteAttachments.length > 0) {
-      const filesToDelete = originalEvent.attachments.filter((a) =>
-        deleteAttachments.includes(a._id.toString()),
+      const attachmentsToMark = originalEvent.attachments.filter((a) =>
+        deleteAttachments.includes((a as any)._id.toString()),
       );
 
-      const filePaths = filesToDelete.map((file) => file.url);
-      await StorageService.deleteFiles(filePaths);
+      const urlsToPendingDelete = attachmentsToMark.map((a) => a.url);
+
+      originalEvent.pendingDeletedFileUrls.push(...urlsToPendingDelete);
 
       deleteAttachments.forEach((id) => {
         originalEvent.attachments.pull({ _id: id });
@@ -424,24 +454,29 @@ class EventService {
     Object.assign(originalEvent, updates);
 
     const pendingEventData = originalEvent.toObject();
-
-    delete (pendingEventData as any).__v;
+    delete (pendingEventData as any)._id;
     delete (pendingEventData as any).createdAt;
     delete (pendingEventData as any).updatedAt;
+    delete (pendingEventData as any).__v;
 
-    const eventCopy = new PendingEventModel({
-      ...pendingEventData,
-      _id: originalEvent._id, // Păstrăm același ID
-      targetEventId: originalEvent._id,
-      status: EventStatus.PENDING,
-    });
+    try {
+      const eventCopy = new PendingEventModel({
+        ...pendingEventData,
+        targetEventId: originalEvent._id,
+        status: EventStatus.PENDING,
+      });
 
-    eventCopy.isNew = true;
-    await eventCopy.save();
+      await eventCopy.save();
+      await eventCopy.populate(EVENT_POPULATE_OPTIONS);
 
-    await eventCopy.populate(EVENT_POPULATE_OPTIONS);
-
-    return eventCopy.toObject() as unknown as PopulatedEventDocument;
+      return eventCopy.toObject() as unknown as PopulatedEventDocument;
+    } catch (error) {
+      if (newFiles.length > 0) {
+        const fileNames = newFiles.map((file) => file.filename);
+        await StorageService.deleteFiles(fileNames);
+      }
+      throw error;
+    }
   }
 
   async deleteEvent(id: string): Promise<void> {
@@ -470,30 +505,36 @@ class EventService {
     }
 
     const registrations = await RegistrationModel.find({ event: id })
-      .select('user')
+      .populate('user', 'preferences')
       .lean()
       .exec();
     const favorites = await FavoriteEventModel.find({ event: id })
-      .select('user')
+      .populate('user', 'preferences')
       .lean()
       .exec();
 
-    const uniqueUserIds = new Set<string>();
-    registrations.forEach((reg) => uniqueUserIds.add(reg.user!.toString()));
-    favorites.forEach((fav) => uniqueUserIds.add(fav.user!.toString()));
+    const userMap = new Map<string, any>();
 
-    const notificationPromises = Array.from(uniqueUserIds).map((userId) => {
-      const notification: INotification = {
-        user: userId,
-        relatedEvent: id,
-        // title: 'Event Deleted',
-        // message: `We are sorry to inform you that the event '${event.title}' has been deleted by the organizer.`,
-        title: event.title,
-        type: NotificationType.EVENT_DELETED,
-      };
-
-      return NotificationService.createNotification(notification);
+    registrations.forEach((reg) => {
+      if (reg.user) userMap.set((reg.user as any)._id.toString(), reg.user);
     });
+
+    favorites.forEach((fav) => {
+      if (fav.user) userMap.set((fav.user as any)._id.toString(), fav.user);
+    });
+
+    const notificationPromises = Array.from(userMap.values())
+      .filter((user) => user.preferences?.notifications?.eventUpdates ?? true)
+      .map((user) => {
+        const notification: INotification = {
+          user: user._id.toString(),
+          relatedEvent: id,
+          title: event.title,
+          type: NotificationType.EVENT_DELETED,
+        };
+
+        return NotificationService.createNotification(notification);
+      });
 
     await Promise.all(notificationPromises);
 
@@ -529,6 +570,7 @@ class EventService {
     }
   }
 
+  // TODO approveEvent
   async approveEvent(
     adminId: string,
     eventId: String,
@@ -566,6 +608,7 @@ class EventService {
     return savedEvent.toObject() as unknown as PopulatedEventDocument;
   }
 
+  // TODO rejectEvent
   async rejectEvent(
     adminId: string,
     eventId: string,

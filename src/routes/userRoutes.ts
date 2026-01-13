@@ -13,16 +13,21 @@ import {
 } from '@controllers/userController';
 import { requireAuth } from '@middlewares/authMiddleware';
 import { requireRoles } from '@middlewares/roleMiddleware';
+import { validate } from '@middlewares/validateInputDataMiddleware';
 import { Router } from 'express';
 import { Role } from 'types/Role';
+import {
+  CreateUserSchema,
+  UpdateUserSchema,
+} from 'validators/inputUserDataValidator';
 
 const router = Router();
 
 router.get('/', requireAuth, requireRoles([Role.ADMIN]), getUsers);
 
 router.get('/me', requireAuth, getUser);
-router.post('/register', requireAuth, registerUser);
-router.put('/me', requireAuth, updateUser);
+router.post('/register', requireAuth, validate(CreateUserSchema), registerUser);
+router.put('/me', requireAuth, validate(UpdateUserSchema), updateUser);
 router.put('/me/update-email', requireAuth, syncEmail);
 router.delete('/me', requireAuth, deleteUser);
 
@@ -70,6 +75,13 @@ router.get(
     Role.STUDENT_REP,
     Role.ORGANIZER,
   ]),
+  getUserRoleRequests,
+);
+
+router.get(
+  '/me/reviews',
+  requireAuth,
+  requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
   getUserRoleRequests,
 );
 

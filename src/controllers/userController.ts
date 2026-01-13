@@ -1,9 +1,11 @@
 import { ResponseEventDto } from '@dtos/EventDto';
 import { ResponseRegistrationDto } from '@dtos/RegistrationDto';
+import { ResponseReviewDto } from '@dtos/ReviewDto';
 import { CreateUserDto, ResponseUserDto, UpdateUserDto } from '@dtos/UserDto';
 import { asyncErrorHandler } from '@middlewares/errorMiddleware';
 import EventRegistrationService from '@services/EventRegistrationService';
 import EventService from '@services/EventService';
+import ReviewService from '@services/ReviewService';
 import UserService from '@services/UserService';
 import { AppError } from '@utils/AppError';
 import { Request, Response } from 'express';
@@ -122,5 +124,13 @@ export const getUserFavoriteEvents = asyncErrorHandler(
     const userId = req.user!.uid;
     const favoriteEvents = await EventService.getUserFavoriteEvents(userId);
     res.status(200).json(ResponseEventDto.fromArray(favoriteEvents));
+  },
+);
+
+export const getUserReviews = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.uid;
+    const reviews = await ReviewService.getUserReviews(userId);
+    res.status(200).json(ResponseReviewDto.fromArray(reviews));
   },
 );

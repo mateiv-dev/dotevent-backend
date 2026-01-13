@@ -24,7 +24,7 @@ export class ResponseRegistrationDto {
       registration.event,
     );
 
-    this.id = registration._id as string;
+    this.id = registration._id.toString();
     this.user = userData;
     this.event = eventData;
     this.hasCheckedIn = registration.hasCheckedIn as boolean;

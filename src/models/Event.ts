@@ -120,6 +120,11 @@ const EventSchema = new Schema(
       ref: 'Event',
       default: null,
     },
+
+    pendingDeletedFileUrls: {
+      type: [String],
+      default: [],
+    },
   },
   {
     timestamps: true,
@@ -146,7 +151,13 @@ export type Attachment = InferSchemaType<typeof AttachmentSchema>;
 export type AttachmentDocument = HydratedDocument<Attachment>;
 
 export const EventModel = mongoose.model<EventDocument>('Event', EventSchema);
+
 export const PendingEventModel = mongoose.model<EventDocument>(
   'PendingEvent',
+  EventSchema,
+);
+
+export const RejectedEventModel = mongoose.model<EventDocument>(
+  'RejectedEvent',
   EventSchema,
 );

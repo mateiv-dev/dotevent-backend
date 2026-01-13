@@ -8,9 +8,8 @@ import EventRegistrationService from '@services/EventRegistrationService';
 import EventService, { EventFilters } from '@services/EventService';
 import { AppError } from '@utils/AppError';
 import { Request, Response } from 'express';
-import { EventStatus } from 'types/EventStatus';
 
-export const getEvents = asyncErrorHandler(
+export const getApprovedEvents = asyncErrorHandler(
   async (req: Request, res: Response) => {
     const filters: EventFilters = req.query;
 
@@ -19,9 +18,9 @@ export const getEvents = asyncErrorHandler(
     let events;
 
     if (hasFilters) {
-      events = await EventService.getFilteredEvents(filters);
+      events = await EventService.getFilteredApprovedEvents(filters);
     } else {
-      events = await EventService.getEventsByStatus(EventStatus.APPROVED);
+      events = await EventService.getApprovedEvents();
     }
 
     res.status(200).json(ResponseEventDto.fromArray(events));
@@ -30,7 +29,14 @@ export const getEvents = asyncErrorHandler(
 
 export const getPendingEvents = asyncErrorHandler(
   async (_req: Request, res: Response) => {
-    const events = await EventService.getEventsByStatus(EventStatus.PENDING);
+    const events = await EventService.getPendingEvents();
+    res.status(200).json(ResponseEventDto.fromArray(events));
+  },
+);
+
+export const getRejectedEvents = asyncErrorHandler(
+  async (_req: Request, res: Response) => {
+    const events = await EventService.getRejectedEvents();
     res.status(200).json(ResponseEventDto.fromArray(events));
   },
 );
@@ -84,6 +90,7 @@ export const updateEvent = asyncErrorHandler(
     const userId = req.user!.uid;
     const { eventId } = req.params;
     const updateEventData: UpdateEventDto = req.body;
+    const files = req.files as Express.Multer.File[];
 
     if (!eventId) {
       throw new AppError('Invalid Event ID format supplied', 400);
@@ -93,6 +100,7 @@ export const updateEvent = asyncErrorHandler(
       userId,
       eventId,
       updateEventData,
+      files,
     );
 
     if (!updatedEvent) {
@@ -179,6 +187,33 @@ export const unregisterParticipant = asyncErrorHandler(
     }
 
     await EventRegistrationService.unregisterParticipant(userId, eventId);
+
+    res.status(200).json();
+  },
+);
+
+export const checkInParticipant = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user?.uid;
+    const { eventId, ticketCode } = req.params;
+
+    if (!userId) {
+      throw new AppError('Invalid user ID format supplied', 400);
+    }
+
+    if (!eventId) {
+      throw new AppError('Invalid event ID format supplied', 400);
+    }
+
+    if (!ticketCode) {
+      throw new AppError('Invalid ticket code supplied', 400);
+    }
+
+    await EventRegistrationService.checkInParticipant(
+      userId,
+      eventId,
+      ticketCode,
+    );
 
     res.status(200).json();
   },

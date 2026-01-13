@@ -101,46 +101,60 @@ class NotificationService {
     }
 
     const registrations = await RegistrationModel.find({ event: eventId })
-      .select('user')
+      .populate('user', 'preferences')
       .lean()
       .exec();
 
     const favorites = await FavoriteEventModel.find({ event: eventId })
-      .select('user')
+      .populate('user', 'preferences')
       .lean()
       .exec();
 
     const registeredUserIds = new Set(
-      registrations.map((reg) => reg.user!.toString()),
+      registrations.map((reg) => (reg.user as any)?._id?.toString()),
     );
 
     const notifications: Promise<any>[] = [];
 
     registrations.forEach((reg) => {
-      const notification: INotification = {
-        user: reg.user!.toString(),
-        relatedEvent: eventId,
-        title: event.title,
-        // message: `The event '${event.title}' that you are registered for has been updated.`,
-        type: NotificationType.REGISTERED_EVENT_UPDATED,
-      };
+      const user = reg.user as any;
+      if (!user) return;
 
-      notifications.push(this.createNotification(notification));
-    });
+      const wantsNotification =
+        user.preferences?.notifications?.eventUpdates ?? true;
 
-    favorites.forEach((fav) => {
-      const userId = fav.user!.toString();
-
-      if (!registeredUserIds.has(userId)) {
+      if (wantsNotification) {
         const notification: INotification = {
-          user: userId,
+          user: user._id.toString(),
           relatedEvent: eventId,
           title: event.title,
-          // message: `An event in your favorites, '${event.title}', has been updated.`,
-          type: NotificationType.FAVORITE_EVENT_UPDATED,
+          type: NotificationType.REGISTERED_EVENT_UPDATED,
         };
 
         notifications.push(this.createNotification(notification));
+      }
+    });
+
+    favorites.forEach((fav) => {
+      const user = fav.user as any;
+      if (!user) return;
+
+      const userId = user._id.toString();
+
+      if (!registeredUserIds.has(userId)) {
+        const wantsNotification =
+          user.preferences?.notifications?.eventUpdates ?? true;
+
+        if (wantsNotification) {
+          const notification: INotification = {
+            user: userId,
+            relatedEvent: eventId,
+            title: event.title,
+            type: NotificationType.FAVORITE_EVENT_UPDATED,
+          };
+
+          notifications.push(this.createNotification(notification));
+        }
       }
     });
 

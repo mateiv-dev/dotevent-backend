@@ -1,7 +1,7 @@
 import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
 import { EventDocument } from './Event';
 
-const FavoriteEventSchema: Schema = new Schema(
+const FavoriteEventSchema = new Schema(
   {
     user: {
       type: String,

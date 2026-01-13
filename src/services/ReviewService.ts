@@ -5,7 +5,19 @@ import EventRegistrationService from './EventRegistrationService';
 import EventService from './EventService';
 import UserService from './UserService';
 
+const REVIEW_POPULATE_OPTIONS = [{ path: 'user', select: '-_id name' }];
+
 class ReviewService {
+  async getUserReviews(userId: string): Promise<PopulatedReviewDocument[]> {
+    const reviews = await ReviewModel.find({ user: userId })
+      .populate(REVIEW_POPULATE_OPTIONS)
+      .sort('-createdAt')
+      .lean()
+      .exec();
+
+    return reviews as unknown as PopulatedReviewDocument[];
+  }
+
   async addReview(
     userId: string,
     eventId: string,
@@ -81,7 +93,7 @@ class ReviewService {
 
   async getEventReviews(eventId: string): Promise<PopulatedReviewDocument[]> {
     const reviews = await ReviewModel.find({ event: eventId })
-      .populate('user', 'name -_id')
+      .populate(REVIEW_POPULATE_OPTIONS)
       .sort('-createdAt')
       .lean()
       .exec();

@@ -1,5 +1,6 @@
 import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
 import { Role } from 'types/Role';
+import { boolean } from 'zod';
 
 const UserSchema = new Schema(
   {
@@ -45,6 +46,17 @@ const UserSchema = new Schema(
       trim: true,
       required: function (this: any) {
         return this.role === Role.ORGANIZER;
+      },
+    },
+
+    preferences: {
+      notifications: {
+        eventUpdates: { type: boolean, default: true },
+        eventReminders: { type: boolean, default: true },
+      },
+      emails: {
+        eventUpdates: { type: boolean, default: true },
+        eventReminders: { type: boolean, default: true },
       },
     },
   },

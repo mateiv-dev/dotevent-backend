@@ -44,17 +44,21 @@ class UserService {
   ): Promise<UserDocument> {
     const { firebaseId } = userData;
     let roleToAssign = Role.SIMPLE_USER;
-    let university: string | undefined = undefined;
+    let universityNameResult: string | undefined = undefined;
 
-    if (adminKey !== undefined && adminKey !== null) {
-      if (adminKey.trim().length === 0) {
-        throw new AppError('Invalid admin secret key', 400);
-      }
+    const emailExists = await UserModel.findOne({ email: userData.email })
+      .select('_id')
+      .lean()
+      .exec();
 
+    if (emailExists) {
+      throw new AppError('This email is already in use.', 409);
+    }
+
+    if (adminKey) {
       if (adminKey.trim() !== process.env.ADMIN_KEY) {
         throw new AppError('Incorrect admin secret key', 403);
       }
-
       roleToAssign = Role.ADMIN;
     }
 
@@ -62,22 +66,23 @@ class UserService {
 
     if (roleToAssign !== Role.ADMIN && match) {
       const domainKey = match[1];
-
       if (domainKey) {
         roleToAssign = Role.STUDENT;
-
-        const universityName = UNIVERSITY_DOMAINS[domainKey];
-
-        university = universityName ? universityName : domainKey.toUpperCase();
+        const mappedUniversity = UNIVERSITY_DOMAINS[domainKey];
+        universityNameResult = mappedUniversity || domainKey.toUpperCase();
       }
     }
 
     const newUser = new UserModel({
       _id: firebaseId,
-      email: userData.email,
+      email: userData.email.toLowerCase(),
       name: userData.name,
       role: roleToAssign,
-      university: university,
+      university: universityNameResult,
+      preferences: {
+        notifications: {},
+        emails: {},
+      },
     });
 
     await newUser.save();
@@ -88,6 +93,7 @@ class UserService {
         .setCustomUserClaims(firebaseId, { role: roleToAssign });
     } catch (firebaseError) {
       await UserModel.findByIdAndDelete(firebaseId);
+      console.error('Firebase Claims Error:', firebaseError);
       throw new AppError('Failed to set user claims on Firebase.', 500);
     }
 
@@ -111,52 +117,48 @@ class UserService {
       throw new AppError('Invalid input data', 400);
     }
 
-    const user = await UserModel.findOne({ firebaseId: id });
+    const user = await UserModel.findById(id);
 
     if (!user) {
       throw new AppError('User not found', 404);
     }
 
-    let allowedFields = {};
-
-    switch (user.role) {
-      case Role.SIMPLE_USER:
-        allowedFields = {
-          name: incomingData.name,
-        };
-        break;
-
-      case Role.STUDENT:
-        allowedFields = {
-          name: incomingData.name,
-          university: incomingData.university,
-        };
-        break;
-
-      case Role.STUDENT_REP:
-        allowedFields = {
-          name: incomingData.name,
-          university: incomingData.university,
-          represents: incomingData.represents,
-        };
-
-        break;
-
-      case Role.ORGANIZER:
-        allowedFields = {
-          name: incomingData.name,
-          organizationName: incomingData.organizationName,
-        };
-
-        break;
-
-      default:
-        allowedFields = { name: incomingData.name };
+    if (incomingData.name !== undefined) {
+      user.name = incomingData.name;
     }
 
-    const finalUpdateData = structuredClone(allowedFields);
+    switch (user.role) {
+      case Role.STUDENT:
+        if (incomingData.university !== undefined)
+          user.university = incomingData.university;
+        break;
+    }
 
-    Object.assign(user, finalUpdateData);
+    if (user.preferences) {
+      const prefs = user.preferences;
+
+      if (prefs.notifications) {
+        if (incomingData.receiveEventUpdatedNotifications !== undefined) {
+          (prefs.notifications.eventUpdates as any) =
+            incomingData.receiveEventUpdatedNotifications;
+        }
+        if (incomingData.receiveEventReminderNotifications !== undefined) {
+          (prefs.notifications.eventReminders as any) =
+            incomingData.receiveEventReminderNotifications;
+        }
+      }
+
+      if (prefs.emails) {
+        if (incomingData.receiveEventUpdatedEmails !== undefined) {
+          (prefs.emails.eventUpdates as any) =
+            incomingData.receiveEventUpdatedEmails;
+        }
+        if (incomingData.receiveEventReminderEmails !== undefined) {
+          (prefs.emails.eventReminders as any) =
+            incomingData.receiveEventReminderEmails;
+        }
+      }
+    }
 
     return await user.save();
   }

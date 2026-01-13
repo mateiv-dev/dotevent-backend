@@ -2,7 +2,7 @@ import { MAX_FILES_COUNT } from '@config/storage';
 import { addReview, getEventReviews } from '@controllers/reviewController';
 import { requireRoles } from '@middlewares/roleMiddleware';
 import { handleFileUpload } from '@middlewares/uploadMiddleware';
-import { validate } from '@middlewares/validateInputData';
+import { validate } from '@middlewares/validateInputDataMiddleware';
 import { Router } from 'express';
 import { Role } from 'types/Role';
 import {
@@ -13,11 +13,13 @@ import { createReviewSchema as CreateReviewSchema } from 'validators/inputReview
 import {
   addEventToFavorites,
   approveEvent,
+  checkInParticipant,
   createEvent,
   deleteEvent,
+  getApprovedEvents,
   getEvent,
-  getEvents,
   getPendingEvents,
+  getRejectedEvents,
   registerParticipant,
   rejectEvent,
   removeEventFromFavorites,
@@ -30,13 +32,20 @@ const router = Router();
 
 // Events
 
-router.get('/', getEvents);
+router.get('/', getApprovedEvents);
 
 router.get(
   '/pending',
   requireAuth,
   requireRoles([Role.ADMIN]),
   getPendingEvents,
+);
+
+router.get(
+  '/rejected',
+  requireAuth,
+  requireRoles([Role.ADMIN]),
+  getRejectedEvents,
 );
 
 router.get('/:eventId', getEvent);
@@ -116,11 +125,19 @@ router.post(
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
   registerParticipant,
 );
+
 router.delete(
   '/:eventId/register',
   requireAuth,
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
   unregisterParticipant,
+);
+
+router.delete(
+  '/:eventId/checkin/:ticketCode',
+  requireAuth,
+  requireRoles([Role.STUDENT_REP, Role.ORGANIZER]),
+  checkInParticipant,
 );
 
 export default router;
