@@ -4,6 +4,7 @@ import NotificationService from '@services/NotificationService';
 import { AppError } from '@utils/AppError';
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
+import { EventModel } from '@models/Event';
 
 export const getNotifications = asyncErrorHandler(
   async (req: Request, res: Response) => {
@@ -81,7 +82,12 @@ export const createEventUpdatedNotifications = asyncErrorHandler(
       throw new Error('Event ID is required');
     }
 
-    await NotificationService.createEventUpdatedNotifications(eventId);
+    const event = await EventModel.findById(eventId).select('title');
+    if (!event) {
+      throw new AppError('Event not found', 404);
+    }
+
+    await NotificationService.createEventUpdatedNotifications(eventId, event.title);
 
     res.status(200).json();
   },
