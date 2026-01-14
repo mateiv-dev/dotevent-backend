@@ -3,6 +3,7 @@ import {
   ResponseEventDto,
   UpdateEventDto,
 } from '@dtos/EventDto';
+import { ResponseRegistrationDto } from '@dtos/RegistrationDto';
 import { asyncErrorHandler } from '@middlewares/errorMiddleware';
 import EventRegistrationService from '@services/EventRegistrationService';
 import EventService, { EventFilters } from '@services/EventService';
@@ -219,7 +220,7 @@ export const registerParticipant = asyncErrorHandler(
       eventId,
     );
 
-    res.status(200).json(registration);
+    res.status(200).json(ResponseRegistrationDto.from(registration));
   },
 );
 
@@ -299,10 +300,53 @@ export const removeEventFromFavorites = asyncErrorHandler(
   },
 );
 
-export const getEventsParticipants = asyncErrorHandler(
+export const getEventParticipants = asyncErrorHandler(
   async (req: Request, res: Response) => {
     const userId = req.user!.uid;
+    const { eventId } = req.params;
 
-    res.status(200).json();
+    if (!eventId) {
+      throw new AppError("Parameter 'eventId' is required", 400);
+    }
+
+    const participants = await EventService.getEventParticipants(
+      userId,
+      eventId,
+    );
+
+    res.status(200).json(participants);
+  },
+);
+
+export const exportParticipantsToCSV = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.uid;
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      throw new AppError("Parameter 'eventId' is required", 400);
+    }
+
+    const csvString = await EventService.exportEventParticipantsToCSV(
+      userId,
+      eventId,
+    );
+
+    res.status(200).send(csvString);
+  },
+);
+
+export const getEventStatistics = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.uid;
+    const { eventId } = req.params;
+
+    if (!eventId) {
+      throw new AppError("Parameter 'eventId' is required", 400);
+    }
+
+    const statistics = await EventService.getEventStatistics(userId, eventId);
+
+    res.status(200).json(statistics);
   },
 );

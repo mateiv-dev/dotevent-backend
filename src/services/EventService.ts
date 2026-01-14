@@ -1,6 +1,9 @@
 import {
   CreateAttachmentDto,
   CreateEventDto,
+  ResponseEventParticipantDto,
+  ResponseEventParticipantsDto,
+  ResponseEventStatisticsDto,
   UpdateEventDto,
 } from '@dtos/EventDto';
 import {
@@ -13,6 +16,7 @@ import { FavoriteEventModel } from '@models/FavoriteEvent';
 import { RegistrationModel } from '@models/Registration';
 import { ReviewModel } from '@models/Review';
 import { AppError } from '@utils/AppError';
+import { Parser } from 'json2csv';
 import mongoose from 'mongoose';
 import { EventStatus } from 'types/EventStatus';
 import { FileType } from 'types/FileType';
@@ -38,6 +42,13 @@ export const EVENT_POPULATE_OPTIONS = [
   },
   { path: 'proccessedBy', select: '-_id name email' },
   { path: 'updatedBy', select: '-_id name email' },
+];
+
+const USER_POPULATE_OPTIONS = [
+  {
+    path: 'user',
+    select: 'name email role university represents organizationName',
+  },
 ];
 
 const SORT_DIRECTION = -1;
@@ -787,22 +798,253 @@ class EventService {
     }
   }
 
-  // async getEventParticipants(eventId: string) {
-  //   const eventExists = await this.eventExists(eventId);
-
-  //   if (!eventExists) {
-  //     throw new AppError('Event not found.', 404);
-  //   }
-  // }
-
-  async getEventsParticipants(userId: string) {
+  async getEventParticipants(
+    userId: string,
+    eventId: string,
+    page?: number,
+    limit?: number,
+  ): Promise<ResponseEventParticipantsDto> {
     const user = await UserService.getUser(userId);
 
     if (!user) {
       throw new AppError('User not found.', 404);
     }
 
-    const events = await EventModel.find();
+    const event = await EventModel.findById(eventId).lean().exec();
+
+    if (!event) {
+      throw new AppError('Event not found.', 404);
+    }
+
+    const isRepMatch =
+      user.represents &&
+      event.organizer.represents &&
+      user.represents === event.organizer.represents;
+
+    const isOrgMatch =
+      user.organizationName &&
+      event.organizer.organizationName &&
+      user.organizationName === event.organizer.organizationName;
+
+    if (!isRepMatch && !isOrgMatch) {
+      throw new AppError(
+        'You are not authorized to view participants for this event.',
+        403,
+      );
+    }
+
+    const query = { event: eventId };
+
+    let registrationQuery = RegistrationModel.find(query)
+      .populate(USER_POPULATE_OPTIONS)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (page && limit) {
+      registrationQuery = registrationQuery
+        .skip((page - 1) * limit)
+        .limit(limit);
+    }
+
+    const [registrations, total] = await Promise.all([
+      registrationQuery.exec(),
+      RegistrationModel.countDocuments(query),
+    ]);
+
+    const formattedParticipants = registrations.map((reg) => {
+      const u = reg.user as any;
+
+      if (!u) {
+        const userData: ResponseEventParticipantDto = {
+          name: 'Deleted User',
+          email: '-',
+          role: '-',
+          university: null,
+          represents: null,
+          organizationName: null,
+          registeredAt: null,
+        };
+
+        return userData;
+      }
+
+      const userData: ResponseEventParticipantDto = {
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        university: u.university ?? null,
+        represents: u.represents ?? null,
+        organizationName: u.organizationName ?? null,
+        registeredAt: reg.createdAt,
+      };
+
+      return userData;
+    });
+
+    return new ResponseEventParticipantsDto(
+      eventId,
+      formattedParticipants,
+      total,
+    );
+  }
+
+  async exportEventParticipantsToCSV(
+    userId: string,
+    eventId: string,
+  ): Promise<string> {
+    const user = await UserService.getUser(userId);
+
+    if (!user) throw new AppError('User not found.', 404);
+
+    const event = await this.getPopulatedEvent(eventId);
+
+    if (!event) throw new AppError('Event not found.', 404);
+
+    const isRepMatch =
+      user.represents &&
+      event.organizer.represents &&
+      user.represents === event.organizer.represents;
+
+    const isOrgMatch =
+      user.organizationName &&
+      event.organizer.organizationName &&
+      user.organizationName === event.organizer.organizationName;
+
+    if (!isRepMatch && !isOrgMatch) {
+      throw new AppError('Not authorized to export participants.', 403);
+    }
+
+    const registrations = await RegistrationModel.find({ event: eventId })
+      .populate(USER_POPULATE_OPTIONS)
+      .sort({ createdAt: -1 })
+      .lean();
+
+    if (registrations.length === 0) {
+      return '';
+    }
+
+    const processedData = registrations.map((reg) => {
+      const u = reg.user as any;
+
+      if (!u) {
+        return {
+          name: 'Deleted User',
+          email: '',
+          role: '',
+          university: null,
+          represents: null,
+          organizationName: null,
+          registeredAt: null,
+        };
+      }
+
+      return {
+        name: u.name,
+        email: u.email,
+        role: u.role,
+        university: u.university ?? null,
+        represents: u.represents ?? null,
+        organizationName: u.organizationName ?? null,
+        registeredAt: reg.createdAt,
+      };
+    });
+
+    const fields = [
+      { label: 'Full Name', value: 'name' },
+      { label: 'Email', value: 'email' },
+      { label: 'Role', value: 'role' },
+      { label: 'University', value: 'university' },
+      { label: 'Represents', value: 'represents' },
+      { label: 'Organization Name', value: 'organizationName' },
+
+      {
+        label: 'Registered At',
+        value: (row: any) =>
+          row.registeredAt
+            ? new Date(row.registeredAt).toLocaleString('en-GB')
+            : '',
+      },
+    ];
+
+    const json2csvParser = new Parser({
+      fields,
+      withBOM: false,
+      delimiter: ',',
+      defaultValue: '',
+    });
+
+    const csvTable =
+      registrations.length > 0 ? json2csvParser.parse(processedData) : '';
+
+    const currentDate = new Date().toLocaleString('en-GB');
+
+    const metadata =
+      `Event Report For,${event.title}\n` +
+      `Generated By,${user.name} (${user.email})\n` +
+      `Date Generated,"${currentDate}"\n` +
+      `Total Participants,${registrations.length}\n` +
+      `\n`;
+
+    const finalCsv = '\uFEFF' + metadata + csvTable;
+
+    return finalCsv;
+  }
+
+  async getEventStatistics(
+    userId: string,
+    eventId: string,
+  ): Promise<ResponseEventStatisticsDto> {
+    const user = await UserService.getUser(userId);
+
+    if (!user) throw new AppError('User not found.', 404);
+
+    const event = await EventModel.findById(eventId).lean().exec();
+
+    if (!event) throw new AppError('Event not found.', 404);
+
+    const isRepMatch =
+      user.represents &&
+      event.organizer.represents &&
+      user.represents === event.organizer.represents;
+
+    const isOrgMatch =
+      user.organizationName &&
+      event.organizer.organizationName &&
+      user.organizationName === event.organizer.organizationName;
+
+    if (!isRepMatch && !isOrgMatch) {
+      throw new AppError('Not authorized to see event statistics.', 403);
+    }
+
+    const [totalParticipants, checkedInCount, reviews] = await Promise.all([
+      RegistrationModel.countDocuments({ event: eventId }).exec(),
+      RegistrationModel.countDocuments({
+        event: eventId,
+        checkedIn: true,
+      }).exec(),
+      ReviewModel.find({ event: eventId }).select('rating').lean().exec(),
+    ]);
+
+    let engagementRate = 0;
+
+    if (totalParticipants > 0) {
+      engagementRate = Math.round((checkedInCount / totalParticipants) * 100);
+    }
+
+    let averageRating = 0;
+
+    if (reviews.length > 0) {
+      const sum = reviews.reduce((acc, review) => acc + review.rating, 0);
+      averageRating = parseFloat((sum / reviews.length).toFixed(1));
+    }
+
+    return new ResponseEventStatisticsDto(
+      totalParticipants,
+      checkedInCount,
+      engagementRate,
+      reviews.length,
+      averageRating,
+    );
   }
 }
 

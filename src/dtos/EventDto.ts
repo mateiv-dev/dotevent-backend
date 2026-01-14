@@ -170,3 +170,51 @@ export class ResponseEventDto {
     return events.map((event) => new ResponseEventDto(event));
   }
 }
+
+export interface ResponseEventParticipantDto {
+  name: string;
+  email: string;
+  role: string;
+  university: string | null;
+  represents: string | null;
+  organizationName: string | null;
+  registeredAt: Date | null;
+}
+
+export class ResponseEventParticipantsDto {
+  public eventId: string;
+  public participants: ResponseEventParticipantDto[];
+  public total: number;
+
+  constructor(
+    eventId: string,
+    participants: ResponseEventParticipantDto[],
+    total: number,
+  ) {
+    this.eventId = eventId;
+    this.participants = participants;
+    this.total = total;
+  }
+}
+
+export class ResponseEventStatisticsDto {
+  public totalParticipants: number;
+  public checkedInParticipants: number;
+  public attendanceRate: number;
+  public feedbackCount: number;
+  public averageRating: number;
+
+  constructor(
+    totalSignups: number,
+    checkedIn: number,
+    attendanceRate: number,
+    feedbackCount: number,
+    averageRating: number,
+  ) {
+    this.totalParticipants = totalSignups;
+    this.checkedInParticipants = checkedIn;
+    this.attendanceRate = attendanceRate;
+    this.feedbackCount = feedbackCount;
+    this.averageRating = averageRating;
+  }
+}

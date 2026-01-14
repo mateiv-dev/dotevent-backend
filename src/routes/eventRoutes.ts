@@ -9,16 +9,17 @@ import {
   CreateEventSchema,
   UpdateEventSchema,
 } from 'validators/inputEventDataValidator';
-import { createReviewSchema as CreateReviewSchema } from 'validators/inputReviewDataValidator';
 import {
   addEventToFavorites,
   approveEvent,
   checkInParticipant,
   createEvent,
   deleteEvent,
+  exportParticipantsToCSV,
   getApprovedEvents,
   getEvent,
-  getEventsParticipants as getEventParticipants,
+  getEventParticipants,
+  getEventStatistics,
   getPendingEvents,
   getRejectedEvents,
   registerParticipant,
@@ -84,7 +85,7 @@ router.post(
   '/:eventId/reviews',
   requireAuth,
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
-  validate(CreateReviewSchema),
+  validate(CreateEventSchema),
   addReview,
 );
 
@@ -147,6 +148,22 @@ router.get(
   requireAuth,
   requireRoles([Role.STUDENT_REP, Role.ORGANIZER]),
   getEventParticipants,
+);
+
+router.get(
+  '/:eventId/participants/export',
+  requireAuth,
+  requireAuth,
+  requireRoles([Role.STUDENT_REP, Role.ORGANIZER]),
+  exportParticipantsToCSV,
+);
+
+router.get(
+  '/:eventId/statistics',
+  requireAuth,
+  requireAuth,
+  requireRoles([Role.STUDENT_REP, Role.ORGANIZER]),
+  getEventStatistics,
 );
 
 export default router;
