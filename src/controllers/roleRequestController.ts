@@ -48,7 +48,7 @@ export const deleteRoleRequest = asyncErrorHandler(
     }
 
     await RoleRequestService.deleteRoleRequest(userId, requestId);
-    return res.status(200).json();
+    return res.status(200).send();
   },
 );
 

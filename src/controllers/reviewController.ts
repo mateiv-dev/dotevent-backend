@@ -46,6 +46,6 @@ export const deleteReview = asyncErrorHandler(
 
     await ReviewService.deleteReview(userId, reviewId);
 
-    res.status(200).json();
+    res.status(200).send();
   },
 );

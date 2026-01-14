@@ -60,7 +60,7 @@ export const deleteNotification = asyncErrorHandler(
 
     await NotificationService.deleteNotification(userId, notificationId);
 
-    res.status(200).json();
+    res.status(200).send();
   },
 );
 
@@ -89,6 +89,6 @@ export const createEventUpdatedNotifications = asyncErrorHandler(
 
     await NotificationService.createEventUpdatedNotifications(eventId, event.title);
 
-    res.status(200).json();
+    res.status(200).send();
   },
 );

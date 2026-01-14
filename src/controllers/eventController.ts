@@ -131,7 +131,7 @@ export const deleteEvent = asyncErrorHandler(
 
     await EventService.deleteEvent(eventId);
 
-    res.status(200).json();
+    res.status(200).send();
   },
 );
 
@@ -238,7 +238,7 @@ export const unregisterParticipant = asyncErrorHandler(
 
     await EventRegistrationService.unregisterParticipant(userId, eventId);
 
-    res.status(200).json();
+    res.status(200).send();
   },
 );
 
@@ -265,7 +265,7 @@ export const checkInParticipant = asyncErrorHandler(
       ticketCode,
     );
 
-    res.status(200).json();
+    res.status(200).send();
   },
 );
 
@@ -295,6 +295,6 @@ export const removeEventFromFavorites = asyncErrorHandler(
 
     await EventService.unmarkFavoriteEvent(userId, eventId);
 
-    res.status(200).json();
+    res.status(200).send();
   },
 );
