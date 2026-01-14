@@ -1,10 +1,10 @@
 import { ResponseNotificationDto } from '@dtos/NotificationDto';
 import { asyncErrorHandler } from '@middlewares/errorMiddleware';
+import { EventModel } from '@models/Event';
 import NotificationService from '@services/NotificationService';
 import { AppError } from '@utils/AppError';
 import { Request, Response } from 'express';
 import mongoose from 'mongoose';
-import { EventModel } from '@models/Event';
 
 export const getNotifications = asyncErrorHandler(
   async (req: Request, res: Response) => {
@@ -33,7 +33,7 @@ export const markAsRead = asyncErrorHandler(
       throw new AppError('Invalid notification ID', 400);
     }
 
-    const notification = await NotificationService.markAsRead(id, userId);
+    const notification = await NotificationService.markAsRead(userId, id);
 
     res.status(200).json(ResponseNotificationDto.from(notification));
   },
@@ -87,7 +87,10 @@ export const createEventUpdatedNotifications = asyncErrorHandler(
       throw new AppError('Event not found', 404);
     }
 
-    await NotificationService.createEventUpdatedNotifications(eventId, event.title);
+    await NotificationService.createEventUpdatedNotifications(
+      eventId,
+      event.title,
+    );
 
     res.status(200).send();
   },
