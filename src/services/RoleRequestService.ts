@@ -60,8 +60,27 @@ class RoleRequestService {
       throw new AppError('User not found', 404);
     }
 
-    if (requestData.requestedRole === user.role) {
-      throw new AppError('User already have this role', 409);
+    const hasSameRole = requestData.requestedRole === user.role;
+    const isSameEntity =
+      (requestData.represents && requestData.represents === user.represents) ||
+      (requestData.organizationName &&
+        requestData.organizationName === user.organizationName);
+
+    if (hasSameRole && isSameEntity) {
+      const entity =
+        requestData.represents || requestData.organizationName || 'this entity';
+      throw new AppError(
+        `User already holds the ${user.role} role for ${entity}.`,
+        409,
+      );
+    }
+
+    const existingRequest = await RoleRequestModel.findOne({
+      user: userId,
+      status: RoleRequestStatus.PENDING,
+    });
+    if (existingRequest) {
+      throw new AppError('You already have a pending role request.', 409);
     }
 
     const requestPayload: Partial<RoleRequest> = {
@@ -204,11 +223,6 @@ class RoleRequestService {
     const notificationData: INotification = {
       user: updatedUser._id,
       title: request.requestedRole.toString(),
-      // title: 'Role Request Approved',
-      // message: `Your request for ${request.requestedRole.replace(
-      //   '_',
-      //   ' ',
-      // )} role has been approved!`,
       type: NotificationType.ROLE_APPROVED,
       relatedRequest: request._id.toString(),
     };
@@ -259,10 +273,6 @@ class RoleRequestService {
     const notificationData: INotification = {
       user: existingUser._id,
       title: request.requestedRole.toString(),
-      // message: `Your request for ${request.requestedRole.replace(
-      //   '_',
-      //   ' ',
-      // )} role has been rejected. Reason: ${rejectionReason}`,
       type: NotificationType.ROLE_REJECTED,
       relatedRequest: request._id.toString(),
     };

@@ -7,7 +7,6 @@ import { RegistrationModel } from '@models/Registration';
 import { AppError } from '@utils/AppError';
 import { INotification } from 'types/INotification';
 import { NotificationType } from 'types/NotificationType';
-import EventService from './EventService';
 
 const NOTIFICATION_POPULATE_OPTIONS = [
   { path: 'relatedEvent', select: '_id title' },
@@ -93,22 +92,24 @@ class NotificationService {
     });
   }
 
-  async createEventUpdatedNotifications(eventId: string): Promise<void> {
-    const event = await EventService.getEvent(eventId);
-
-    if (!event) {
-      throw new AppError('Event not found', 404);
-    }
-
-    const registrations = await RegistrationModel.find({ event: eventId })
-      .populate('user', 'preferences')
-      .lean()
-      .exec();
-
-    const favorites = await FavoriteEventModel.find({ event: eventId })
-      .populate('user', 'preferences')
-      .lean()
-      .exec();
+  private async notifyEventSubscribers(
+    eventId: string,
+    eventTitle: string,
+    types: {
+      registered: NotificationType;
+      favorite: NotificationType;
+    },
+  ): Promise<void> {
+    const [registrations, favorites] = await Promise.all([
+      RegistrationModel.find({ event: eventId })
+        .populate('user', 'preferences')
+        .lean()
+        .exec(),
+      FavoriteEventModel.find({ event: eventId })
+        .populate('user', 'preferences')
+        .lean()
+        .exec(),
+    ]);
 
     const registeredUserIds = new Set(
       registrations.map((reg) => (reg.user as any)?._id?.toString()),
@@ -124,14 +125,14 @@ class NotificationService {
         user.preferences?.notifications?.eventUpdates ?? true;
 
       if (wantsNotification) {
-        const notification: INotification = {
-          user: user._id.toString(),
-          relatedEvent: eventId,
-          title: event.title,
-          type: NotificationType.REGISTERED_EVENT_UPDATED,
-        };
-
-        notifications.push(this.createNotification(notification));
+        notifications.push(
+          this.createNotification({
+            user: user._id.toString(),
+            relatedEvent: eventId,
+            title: eventTitle,
+            type: types.registered,
+          }),
+        );
       }
     });
 
@@ -146,19 +147,39 @@ class NotificationService {
           user.preferences?.notifications?.eventUpdates ?? true;
 
         if (wantsNotification) {
-          const notification: INotification = {
-            user: userId,
-            relatedEvent: eventId,
-            title: event.title,
-            type: NotificationType.FAVORITE_EVENT_UPDATED,
-          };
-
-          notifications.push(this.createNotification(notification));
+          notifications.push(
+            this.createNotification({
+              user: userId,
+              relatedEvent: eventId,
+              title: eventTitle,
+              type: types.favorite,
+            }),
+          );
         }
       }
     });
 
     await Promise.all(notifications);
+  }
+
+  async createEventUpdatedNotifications(
+    eventId: string,
+    eventTitle: string,
+  ): Promise<void> {
+    await this.notifyEventSubscribers(eventId, eventTitle, {
+      registered: NotificationType.REGISTERED_EVENT_UPDATED,
+      favorite: NotificationType.FAVORITE_EVENT_UPDATED,
+    });
+  }
+
+  async createEventDeletedNotifications(
+    eventId: string,
+    eventTitle: string,
+  ): Promise<void> {
+    await this.notifyEventSubscribers(eventId, eventTitle, {
+      registered: NotificationType.EVENT_DELETED,
+      favorite: NotificationType.EVENT_DELETED,
+    });
   }
 }
 

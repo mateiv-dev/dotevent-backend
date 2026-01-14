@@ -16,7 +16,6 @@ import { AppError } from '@utils/AppError';
 import mongoose from 'mongoose';
 import { EventStatus } from 'types/EventStatus';
 import { FileType } from 'types/FileType';
-import { INotification } from 'types/INotification';
 import { NotificationType } from 'types/NotificationType';
 import NotificationService from './NotificationService';
 import StorageService from './StorageService';
@@ -44,19 +43,31 @@ export const EVENT_POPULATE_OPTIONS = [
 const SORT_DIRECTION = -1;
 const DELETE_EVENT_HOURS_LIMIT = 24;
 
+const PROTECTED_FIELDS = [
+  '_id',
+  'attendees',
+  'averageRating',
+  'reviewCount',
+  'createdAt',
+  'updatedAt',
+  '__v',
+];
+
 class EventService {
   async getFilteredApprovedEvents(
     filters: EventFilters = {},
-  ): Promise<PopulatedEventDocument[]> {
-    const query: any = {};
+    page: number = 1,
+    limit: number = 10,
+  ): Promise<{ events: PopulatedEventDocument[]; total: number }> {
+    const query: any = {
+      status: EventStatus.APPROVED,
+    };
 
-    query.status = EventStatus.APPROVED;
+    const caseInsensitiveOptions = { $options: 'i' };
 
     if (filters.eventType) {
       query.eventType = filters.eventType;
     }
-
-    const caseInsensitiveOptions = { $options: 'i' };
 
     if (filters.faculty) {
       query.faculty = { $regex: filters.faculty, ...caseInsensitiveOptions };
@@ -74,34 +85,49 @@ class EventService {
     }
 
     if (filters.organizer) {
-      query.organizerName = {
+      const organizerRegex = {
         $regex: filters.organizer,
         ...caseInsensitiveOptions,
       };
+
+      query.$or = [
+        { 'organizer.represents': organizerRegex },
+        { 'organizer.organizationName': organizerRegex },
+      ];
     }
 
     if (filters.startDate || filters.endDate) {
       query.date = {};
 
       if (filters.startDate) {
-        const startOfDay = new Date(new Date(filters.startDate).toDateString());
-        query.date.$gte = startOfDay;
+        const start = new Date(filters.startDate);
+        start.setHours(0, 0, 0, 0);
+        query.date.$gte = start;
       }
 
       if (filters.endDate) {
-        const endOfDay = new Date(new Date(filters.endDate).toDateString());
-        endOfDay.setDate(endOfDay.getDate() + 1);
-        query.date.$lt = endOfDay;
+        const end = new Date(filters.endDate);
+        end.setDate(end.getDate() + 1);
+        end.setHours(0, 0, 0, 0);
+        query.date.$lt = end;
       }
     }
 
-    const events = await EventModel.find(query)
-      .sort({ date: SORT_DIRECTION })
-      .populate(EVENT_POPULATE_OPTIONS)
-      .lean()
-      .exec();
+    const [events, total] = await Promise.all([
+      EventModel.find(query)
+        .sort({ date: SORT_DIRECTION })
+        .skip((page - 1) * limit)
+        .limit(limit)
+        .populate(EVENT_POPULATE_OPTIONS)
+        .lean()
+        .exec(),
+      EventModel.countDocuments(query),
+    ]);
 
-    return events as unknown as PopulatedEventDocument[];
+    return {
+      events: events as unknown as PopulatedEventDocument[],
+      total,
+    };
   }
 
   async getApprovedEvents(): Promise<PopulatedEventDocument[]> {
@@ -251,7 +277,6 @@ class EventService {
   ): Promise<PopulatedEventDocument> {
     try {
       const user = await UserService.getUser(userId);
-
       if (!user) {
         throw new AppError('User not found.', 404);
       }
@@ -288,7 +313,7 @@ class EventService {
         StorageService.sortAttachments(attachments);
       }
 
-      const newEvent = new EventModel({
+      const newPendingEvent = new PendingEventModel({
         ...newEventData,
         author: userId,
         date: eventDate,
@@ -298,10 +323,11 @@ class EventService {
           represents: user.represents ?? undefined,
           organizationName: user.organizationName ?? undefined,
         },
+        status: EventStatus.PENDING,
         targetEventId: null,
       });
 
-      const savedEvent = await newEvent.save();
+      const savedEvent = await newPendingEvent.save();
 
       await savedEvent.populate(EVENT_POPULATE_OPTIONS);
 
@@ -504,39 +530,7 @@ class EventService {
       await StorageService.deleteFiles(fileNames);
     }
 
-    const registrations = await RegistrationModel.find({ event: id })
-      .populate('user', 'preferences')
-      .lean()
-      .exec();
-    const favorites = await FavoriteEventModel.find({ event: id })
-      .populate('user', 'preferences')
-      .lean()
-      .exec();
-
-    const userMap = new Map<string, any>();
-
-    registrations.forEach((reg) => {
-      if (reg.user) userMap.set((reg.user as any)._id.toString(), reg.user);
-    });
-
-    favorites.forEach((fav) => {
-      if (fav.user) userMap.set((fav.user as any)._id.toString(), fav.user);
-    });
-
-    const notificationPromises = Array.from(userMap.values())
-      .filter((user) => user.preferences?.notifications?.eventUpdates ?? true)
-      .map((user) => {
-        const notification: INotification = {
-          user: user._id.toString(),
-          relatedEvent: id,
-          title: event.title,
-          type: NotificationType.EVENT_DELETED,
-        };
-
-        return NotificationService.createNotification(notification);
-      });
-
-    await Promise.all(notificationPromises);
+    await NotificationService.createEventDeletedNotifications(id, event.title);
 
     await RegistrationModel.deleteMany({ event: id });
     await FavoriteEventModel.deleteMany({ event: id });
@@ -570,82 +564,134 @@ class EventService {
     }
   }
 
-  // TODO approveEvent
   async approveEvent(
     adminId: string,
-    eventId: String,
+    pendingEventId: string,
   ): Promise<PopulatedEventDocument> {
-    const event = await EventModel.findById(eventId);
+    const admin = await UserService.getUser(adminId);
+    if (!admin) throw new AppError('Admin not found', 404);
 
-    if (!event) {
-      throw new AppError('Event not found', 404);
+    const pendingEvent = await PendingEventModel.findById(pendingEventId);
+    if (!pendingEvent) throw new AppError('Pending request not found', 404);
+
+    let finalEvent;
+
+    if (pendingEvent.targetEventId) {
+      const originalEvent = await EventModel.findById(
+        pendingEvent.targetEventId,
+      );
+      if (!originalEvent)
+        throw new AppError('Original event no longer exists', 404);
+
+      if (pendingEvent.pendingDeletedFileUrls?.length > 0) {
+        const fileNames = pendingEvent.pendingDeletedFileUrls
+          .map((url) => url.split('/').pop()!)
+          .filter(Boolean);
+        await StorageService.deleteFiles(fileNames);
+      }
+
+      const updatedData = pendingEvent.toObject();
+      PROTECTED_FIELDS.forEach((field) => delete (updatedData as any)[field]);
+
+      Object.assign(originalEvent, updatedData);
+      originalEvent.status = EventStatus.APPROVED;
+      originalEvent.proccessedBy = adminId;
+      originalEvent.proccessedAt = new Date();
+      originalEvent.pendingDeletedFileUrls = [];
+
+      finalEvent = await originalEvent.save();
+
+      await NotificationService.createEventUpdatedNotifications(
+        originalEvent._id.toString(),
+        originalEvent.title,
+      );
+    } else {
+      const eventData = pendingEvent.toObject();
+      delete (eventData as any)._id;
+
+      finalEvent = await EventModel.create({
+        ...eventData,
+        status: EventStatus.APPROVED,
+        proccessedBy: adminId,
+        proccessedAt: new Date(),
+      });
     }
 
-    if (event.status !== EventStatus.PENDING) {
-      throw new AppError('Event already proccessed', 409);
-    }
+    await PendingEventModel.findByIdAndDelete(pendingEventId);
 
-    event.status = EventStatus.APPROVED;
-    event.proccessedBy = adminId;
-    event.proccessedAt = new Date();
-
-    const savedEvent = await event.save();
-
-    if (savedEvent.author) {
-      const notificationData: INotification = {
-        user: savedEvent.author,
-        title: event.title,
-        // message: `Your event "${event.title}" has been approved!`,
+    if (finalEvent.author) {
+      await NotificationService.createNotification({
+        user: finalEvent.author.toString(),
+        title: finalEvent.title,
         type: NotificationType.EVENT_APPROVED,
-        relatedEvent: event._id.toString(),
-      };
-
-      await NotificationService.createNotification(notificationData);
+        relatedEvent: finalEvent._id.toString(),
+      });
     }
 
-    await savedEvent.populate(EVENT_POPULATE_OPTIONS);
-
-    return savedEvent.toObject() as unknown as PopulatedEventDocument;
+    const populated = await EventModel.findById(finalEvent._id)
+      .populate(EVENT_POPULATE_OPTIONS)
+      .lean()
+      .exec();
+    return populated as unknown as PopulatedEventDocument;
   }
 
-  // TODO rejectEvent
   async rejectEvent(
     adminId: string,
-    eventId: string,
+    pendingEventId: string,
     rejectionReason: string,
   ): Promise<PopulatedEventDocument> {
-    const event = await EventModel.findById(eventId);
+    const pendingEvent = await PendingEventModel.findById(pendingEventId);
+    if (!pendingEvent) throw new AppError('Pending request not found', 404);
 
-    if (!event) {
-      throw new AppError('Event not found', 404);
+    let filesToDelete: string[] = [];
+    if (!pendingEvent.targetEventId) {
+      filesToDelete = pendingEvent.attachments
+        .map((a) => a.url.split('/').pop()!)
+        .filter(Boolean);
+    } else {
+      const originalEvent = await EventModel.findById(
+        pendingEvent.targetEventId,
+      );
+      if (originalEvent) {
+        const originalUrls = new Set(
+          originalEvent.attachments.map((a) => a.url),
+        );
+        filesToDelete = pendingEvent.attachments
+          .filter((a) => !originalUrls.has(a.url))
+          .map((a) => a.url.split('/').pop()!)
+          .filter(Boolean);
+      }
     }
 
-    if (event.status !== EventStatus.PENDING) {
-      throw new AppError('Event already processed', 409);
-    }
+    if (filesToDelete.length > 0)
+      await StorageService.deleteFiles(filesToDelete);
 
-    event.status = EventStatus.REJECTED;
-    event.rejectionReason = rejectionReason;
-    event.proccessedBy = adminId;
-    event.proccessedAt = new Date();
+    const rejectedData = pendingEvent.toObject();
+    delete (rejectedData as any)._id;
 
-    const savedEvent = await event.save();
+    const rejectedDoc = await RejectedEventModel.create({
+      ...rejectedData,
+      status: EventStatus.REJECTED,
+      rejectionReason,
+      proccessedBy: adminId,
+      proccessedAt: new Date(),
+    });
 
-    if (savedEvent.author) {
-      const notificationData: INotification = {
-        user: savedEvent.author,
-        title: event.title,
-        // message: `Your event "${event.title}" has been rejected.`,
+    await PendingEventModel.findByIdAndDelete(pendingEventId);
+
+    if (rejectedDoc.author) {
+      await NotificationService.createNotification({
+        user: rejectedDoc.author.toString(),
+        title: rejectedDoc.title,
         type: NotificationType.EVENT_REJECTED,
-        relatedEvent: event._id.toString(),
-      };
-
-      await NotificationService.createNotification(notificationData);
+        relatedEvent:
+          rejectedDoc.targetEventId?.toString() || rejectedDoc._id.toString(),
+      });
     }
 
-    await savedEvent.populate(EVENT_POPULATE_OPTIONS);
+    const populated = await rejectedDoc.populate(EVENT_POPULATE_OPTIONS);
 
-    return savedEvent.toObject() as unknown as PopulatedEventDocument;
+    return populated.toObject() as unknown as PopulatedEventDocument;
   }
 
   async markFavoriteEvent(
@@ -665,7 +711,6 @@ class EventService {
 
     if (existing) {
       throw new AppError('Event is already in favorites', 409);
-      // return existing.event as unknown as PopulatedEventDocument;
     }
 
     const newFavorite = await FavoriteEventModel.create({

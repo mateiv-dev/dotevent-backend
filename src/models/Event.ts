@@ -131,7 +131,15 @@ const EventSchema = new Schema(
   },
 );
 
-EventSchema.index({ status: 1, createdAt: -1, _id: -1 });
+EventSchema.index({ date: -1 });
+
+EventSchema.index({ faculty: 1 });
+EventSchema.index({ department: 1 });
+EventSchema.index({ location: 1 });
+EventSchema.index({ eventType: 1 });
+
+EventSchema.index({ 'organizer.represents': 1 });
+EventSchema.index({ 'organizer.organizationName': 1 });
 
 type InferredEvent = InferSchemaType<typeof EventSchema>;
 
