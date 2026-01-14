@@ -56,8 +56,8 @@ const PROTECTED_FIELDS = [
 class EventService {
   async getFilteredApprovedEvents(
     filters: EventFilters = {},
-    page: number = 1,
-    limit: number = 10,
+    page?: number,
+    limit?: number,
   ): Promise<{ events: PopulatedEventDocument[]; total: number }> {
     const query: any = {
       status: EventStatus.APPROVED,
@@ -113,14 +113,17 @@ class EventService {
       }
     }
 
+    let eventQuery = EventModel.find(query)
+      .sort({ date: SORT_DIRECTION })
+      .populate(EVENT_POPULATE_OPTIONS)
+      .lean();
+
+    if (page && limit) {
+      eventQuery = eventQuery.skip((page - 1) * limit).limit(limit);
+    }
+
     const [events, total] = await Promise.all([
-      EventModel.find(query)
-        .sort({ date: SORT_DIRECTION })
-        .skip((page - 1) * limit)
-        .limit(limit)
-        .populate(EVENT_POPULATE_OPTIONS)
-        .lean()
-        .exec(),
+      eventQuery.exec(),
       EventModel.countDocuments(query),
     ]);
 
@@ -130,36 +133,82 @@ class EventService {
     };
   }
 
-  async getApprovedEvents(): Promise<PopulatedEventDocument[]> {
-    const events = await EventModel.find({
-      status: EventStatus.APPROVED,
-    })
+  async getApprovedEvents(
+    page?: number,
+    limit?: number,
+  ): Promise<{ events: PopulatedEventDocument[]; total: number }> {
+    const query = { status: EventStatus.APPROVED };
+
+    let eventQuery = EventModel.find(query)
       .sort({ date: SORT_DIRECTION })
       .populate(EVENT_POPULATE_OPTIONS)
-      .lean()
-      .exec();
+      .lean();
 
-    return events as unknown as PopulatedEventDocument[];
+    if (page && limit) {
+      eventQuery = eventQuery.skip((page - 1) * limit).limit(limit);
+    }
+
+    const [events, total] = await Promise.all([
+      eventQuery.exec(),
+      EventModel.countDocuments(query),
+    ]);
+
+    return {
+      events: events as unknown as PopulatedEventDocument[],
+      total,
+    };
   }
 
-  async getPendingEvents(): Promise<PopulatedEventDocument[]> {
-    const events = await PendingEventModel.find()
+  async getPendingEvents(
+    page?: number,
+    limit?: number,
+  ): Promise<{ events: PopulatedEventDocument[]; total: number }> {
+    const query = {};
+
+    let eventQuery = PendingEventModel.find(query)
       .sort({ date: SORT_DIRECTION })
       .populate(EVENT_POPULATE_OPTIONS)
-      .lean()
-      .exec();
+      .lean();
 
-    return events as unknown as PopulatedEventDocument[];
+    if (page && limit) {
+      eventQuery = eventQuery.skip((page - 1) * limit).limit(limit);
+    }
+
+    const [events, total] = await Promise.all([
+      eventQuery.exec(),
+      PendingEventModel.countDocuments(query),
+    ]);
+
+    return {
+      events: events as unknown as PopulatedEventDocument[],
+      total,
+    };
   }
 
-  async getRejectedEvents(): Promise<PopulatedEventDocument[]> {
-    const events = await RejectedEventModel.find()
+  async getRejectedEvents(
+    page?: number,
+    limit?: number,
+  ): Promise<{ events: PopulatedEventDocument[]; total: number }> {
+    const query = {};
+
+    let eventQuery = RejectedEventModel.find(query)
       .sort({ date: SORT_DIRECTION })
       .populate(EVENT_POPULATE_OPTIONS)
-      .lean()
-      .exec();
+      .lean();
 
-    return events as unknown as PopulatedEventDocument[];
+    if (page && limit) {
+      eventQuery = eventQuery.skip((page - 1) * limit).limit(limit);
+    }
+
+    const [events, total] = await Promise.all([
+      eventQuery.exec(),
+      RejectedEventModel.countDocuments(query),
+    ]);
+
+    return {
+      events: events as unknown as PopulatedEventDocument[],
+      total,
+    };
   }
 
   async getEvent(id: string): Promise<PopulatedEventDocument | null> {

@@ -11,33 +11,83 @@ import { Request, Response } from 'express';
 
 export const getApprovedEvents = asyncErrorHandler(
   async (req: Request, res: Response) => {
-    const filters: EventFilters = req.query;
+    const page = req.query.page
+      ? parseInt(req.query.page as string)
+      : undefined;
+    const limit = req.query.limit
+      ? parseInt(req.query.limit as string)
+      : undefined;
 
-    const hasFilters = Object.keys(filters).length > 0;
+    const { page: _p, limit: _l, ...filtersRaw } = req.query as any;
 
-    let events;
+    const hasFilters = Object.keys(filtersRaw).length > 0;
+
+    let result;
 
     if (hasFilters) {
-      events = await EventService.getFilteredApprovedEvents(filters);
+      const filters: EventFilters = filtersRaw;
+
+      result = await EventService.getFilteredApprovedEvents(
+        filters,
+        page,
+        limit,
+      );
     } else {
-      events = await EventService.getApprovedEvents();
+      result = await EventService.getApprovedEvents(page, limit);
     }
 
-    res.status(200).json(ResponseEventDto.fromArray(events));
+    if (page && limit) {
+      res.status(200).json({
+        events: ResponseEventDto.fromArray(result.events),
+        total: result.total,
+      });
+    } else {
+      res.status(200).json(ResponseEventDto.fromArray(result.events));
+    }
   },
 );
 
 export const getPendingEvents = asyncErrorHandler(
-  async (_req: Request, res: Response) => {
-    const events = await EventService.getPendingEvents();
-    res.status(200).json(ResponseEventDto.fromArray(events));
+  async (req: Request, res: Response) => {
+    const page = req.query.page
+      ? parseInt(req.query.page as string)
+      : undefined;
+    const limit = req.query.limit
+      ? parseInt(req.query.limit as string)
+      : undefined;
+
+    const result = await EventService.getPendingEvents(page, limit);
+
+    if (page && limit) {
+      res.status(200).json({
+        events: ResponseEventDto.fromArray(result.events),
+        total: result.total,
+      });
+    } else {
+      res.status(200).json(ResponseEventDto.fromArray(result.events));
+    }
   },
 );
 
 export const getRejectedEvents = asyncErrorHandler(
-  async (_req: Request, res: Response) => {
-    const events = await EventService.getRejectedEvents();
-    res.status(200).json(ResponseEventDto.fromArray(events));
+  async (req: Request, res: Response) => {
+    const page = req.query.page
+      ? parseInt(req.query.page as string)
+      : undefined;
+    const limit = req.query.limit
+      ? parseInt(req.query.limit as string)
+      : undefined;
+
+    const result = await EventService.getRejectedEvents(page, limit);
+
+    if (page && limit) {
+      res.status(200).json({
+        events: ResponseEventDto.fromArray(result.events),
+        total: result.total,
+      });
+    } else {
+      res.status(200).json(ResponseEventDto.fromArray(result.events));
+    }
   },
 );
 
