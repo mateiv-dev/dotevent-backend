@@ -41,6 +41,7 @@ export interface ResponseEventProccessedByDto {
 export interface ResponseOrganizerDto {
   represents: string | null;
   organizationName: string | null;
+  contact: string;
 }
 
 export class ResponseEventDto {
@@ -96,6 +97,7 @@ export class ResponseEventDto {
     const organizerData: ResponseOrganizerDto = {
       represents: event.organizer.represents ?? null,
       organizationName: event.organizer.organizationName ?? null,
+      contact: event.organizer.contact,
     };
 
     this.organizer = organizerData;

@@ -37,6 +37,7 @@ const OrganizerSchema = new Schema(
   {
     represents: { type: String, trim: true },
     organizationName: { type: String, trim: true },
+    contact: { type: String, trim: true, required: true },
   },
   { _id: false },
 );

@@ -371,6 +371,7 @@ class EventService {
         organizer: {
           represents: user.represents ?? undefined,
           organizationName: user.organizationName ?? undefined,
+          contact: newEventData.contact,
         },
         status: EventStatus.PENDING,
         targetEventId: null,

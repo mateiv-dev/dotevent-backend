@@ -1,6 +1,6 @@
 import { ResponseRegistrationUserDto } from '@dtos/RegistrationDto';
 import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
-import { uuidv4 } from 'zod';
+import { v4 as uuidv4 } from 'uuid';
 import { PopulatedEventDocument } from './Event';
 
 const RegistrationSchema = new Schema(

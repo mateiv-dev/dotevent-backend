@@ -28,6 +28,7 @@ export const CreateEventSchema = z.object({
     .trim()
     .min(1, 'coverImageName can not be empty.')
     .nullish(),
+  contact: z.string().trim().min(2, 'Contact is required.'),
 });
 
 export const UpdateEventSchema = CreateEventSchema.partial().extend({
