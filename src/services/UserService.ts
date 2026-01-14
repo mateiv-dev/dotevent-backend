@@ -9,11 +9,7 @@ const studentDomainRegex = /^[a-zA-Z0-9._%+-]+@student\.([a-zA-Z0-9-]+)\.ro$/;
 
 class UserService {
   async getUsers(): Promise<UserDocument[]> {
-    return await UserModel.find({
-      role: { $ne: Role.ADMIN },
-    })
-      .lean()
-      .exec();
+    return await UserModel.find().lean().exec();
   }
 
   async getUser(id: string): Promise<UserDocument | null> {

@@ -298,3 +298,11 @@ export const removeEventFromFavorites = asyncErrorHandler(
     res.status(200).send();
   },
 );
+
+export const getEventsParticipants = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.uid;
+
+    res.status(200).json();
+  },
+);

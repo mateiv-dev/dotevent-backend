@@ -18,6 +18,7 @@ import {
   deleteEvent,
   getApprovedEvents,
   getEvent,
+  getEventsParticipants as getEventParticipants,
   getPendingEvents,
   getRejectedEvents,
   registerParticipant,
@@ -138,6 +139,14 @@ router.delete(
   requireAuth,
   requireRoles([Role.STUDENT_REP, Role.ORGANIZER]),
   checkInParticipant,
+);
+
+router.get(
+  '/:eventId/participants',
+  requireAuth,
+  requireAuth,
+  requireRoles([Role.STUDENT_REP, Role.ORGANIZER]),
+  getEventParticipants,
 );
 
 export default router;

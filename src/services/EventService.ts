@@ -786,6 +786,24 @@ class EventService {
       throw new AppError('Favorite Event not found', 404);
     }
   }
+
+  // async getEventParticipants(eventId: string) {
+  //   const eventExists = await this.eventExists(eventId);
+
+  //   if (!eventExists) {
+  //     throw new AppError('Event not found.', 404);
+  //   }
+  // }
+
+  async getEventsParticipants(userId: string) {
+    const user = await UserService.getUser(userId);
+
+    if (!user) {
+      throw new AppError('User not found.', 404);
+    }
+
+    const events = await EventModel.find();
+  }
 }
 
 export default new EventService();
