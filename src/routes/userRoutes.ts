@@ -8,6 +8,7 @@ import {
   getUserOrganizationEvents,
   getUserRegistration,
   getUserRegistrations,
+  getUserReviews,
   getUsers,
   createUser as registerUser,
   syncEmail,
@@ -86,7 +87,7 @@ router.get(
   '/me/reviews',
   requireAuth,
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
-  getUserRoleRequests,
+  getUserReviews,
 );
 
 export default router;
