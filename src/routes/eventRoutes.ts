@@ -21,6 +21,7 @@ import {
   getEventParticipants,
   getEventStatistics,
   getPendingEvents,
+  getRecommendedEvents,
   getRejectedEvents,
   registerParticipant,
   rejectEvent,
@@ -35,6 +36,12 @@ const router = Router();
 // Events
 
 router.get('/', getApprovedEvents);
+router.get(
+  '/recommendations',
+  requireAuth,
+  requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
+  getRecommendedEvents,
+);
 
 router.get(
   '/pending',

@@ -1046,6 +1046,80 @@ class EventService {
       averageRating,
     );
   }
+
+  async getRecommendedEvents(
+    userId: string,
+    page?: number,
+    limit?: number,
+  ): Promise<PopulatedEventDocument[]> {
+    const [user, userRegistrations] = await Promise.all([
+      UserService.getUser(userId),
+      RegistrationModel.find({ user: userId }).populate('event').lean(),
+    ]);
+
+    if (!user) {
+      throw new AppError('User not found', 404);
+    }
+
+    const registeredEventIds = userRegistrations.map(
+      (reg: any) => reg.event?._id || reg.event,
+    );
+
+    const targetCategories = new Set<string>(
+      user.preferences?.eventCategories || [],
+    );
+    const targetOrganizers = new Set<string>(
+      user.preferences?.organizers || [],
+    );
+
+    userRegistrations.forEach((reg: any) => {
+      const event = reg.event;
+      if (!event) return;
+
+      if (event.category) {
+        targetCategories.add(event.category);
+      }
+
+      const orgName =
+        event.organizer?.organizationName || event.organizer?.represents;
+      if (orgName) {
+        targetOrganizers.add(orgName);
+      }
+    });
+
+    const categoryList = Array.from(targetCategories);
+    const organizerList = Array.from(targetOrganizers);
+
+    const queryConditions: any = {
+      date: { $gte: new Date() },
+      _id: { $nin: registeredEventIds },
+    };
+
+    if (categoryList.length > 0 || organizerList.length > 0) {
+      queryConditions.$or = [
+        { category: { $in: categoryList } },
+        { 'organizer.organizationName': { $in: organizerList } },
+        { 'organizer.represents': { $in: organizerList } },
+      ];
+    }
+
+    let query = EventModel.find(queryConditions)
+      .sort({ date: 1 })
+      .populate(EVENT_POPULATE_OPTIONS);
+
+    if (limit) {
+      query = query.limit(limit);
+
+      if (page) {
+        const skip = (page - 1) * limit;
+        query = query.skip(skip);
+      }
+    }
+
+    const recommendations = await query.exec();
+
+    return recommendations as unknown as PopulatedEventDocument[];
+  }
 }
 
 export default new EventService();

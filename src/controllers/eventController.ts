@@ -48,6 +48,26 @@ export const getApprovedEvents = asyncErrorHandler(
   },
 );
 
+export const getRecommendedEvents = asyncErrorHandler(
+  async (req: Request, res: Response) => {
+    const userId = req.user!.uid;
+
+    const pageParam = req.query.page
+      ? parseInt(req.query.page as string)
+      : undefined;
+    const limitParam = req.query.limit
+      ? parseInt(req.query.limit as string)
+      : undefined;
+
+    const page = pageParam && !isNaN(pageParam) ? pageParam : undefined;
+    const limit = limitParam && !isNaN(limitParam) ? limitParam : undefined;
+
+    const events = await EventService.getRecommendedEvents(userId, page, limit);
+
+    res.status(200).json(ResponseEventDto.fromArray(events));
+  },
+);
+
 export const getPendingEvents = asyncErrorHandler(
   async (req: Request, res: Response) => {
     const page = req.query.page

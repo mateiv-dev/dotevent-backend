@@ -76,8 +76,18 @@ class UserService {
       role: roleToAssign,
       university: universityNameResult,
       preferences: {
-        notifications: {},
-        emails: {},
+        notifications: {
+          eventUpdated: userData.receiveEventUpdatedNotifications,
+          eventReminder: userData.receiveEventReminderNotifications,
+        },
+
+        emails: {
+          eventUpdated: userData.receiveEventUpdatedEmails,
+          eventReminder: userData.receiveEventReminderEmails,
+        },
+
+        eventCategories: userData.preferredEventCategories,
+        organizers: userData.preferredOrganizers,
       },
     });
 
@@ -135,24 +145,32 @@ class UserService {
 
       if (prefs.notifications) {
         if (incomingData.receiveEventUpdatedNotifications !== undefined) {
-          (prefs.notifications.eventUpdates as any) =
+          (prefs.notifications.eventUpdated as any) =
             incomingData.receiveEventUpdatedNotifications;
         }
         if (incomingData.receiveEventReminderNotifications !== undefined) {
-          (prefs.notifications.eventReminders as any) =
+          (prefs.notifications.eventReminder as any) =
             incomingData.receiveEventReminderNotifications;
         }
       }
 
       if (prefs.emails) {
         if (incomingData.receiveEventUpdatedEmails !== undefined) {
-          (prefs.emails.eventUpdates as any) =
+          (prefs.emails.eventUpdated as any) =
             incomingData.receiveEventUpdatedEmails;
         }
         if (incomingData.receiveEventReminderEmails !== undefined) {
-          (prefs.emails.eventReminders as any) =
+          (prefs.emails.eventReminder as any) =
             incomingData.receiveEventReminderEmails;
         }
+      }
+
+      if (incomingData.preferredEventCategories !== undefined) {
+        user.preferences.eventCategories =
+          incomingData.preferredEventCategories;
+      }
+      if (incomingData.preferredOrganizers !== undefined) {
+        user.preferences.organizers = incomingData.preferredOrganizers;
       }
     }
 
@@ -173,6 +191,26 @@ class UserService {
     user.email = newEmail;
 
     return user.save();
+  }
+
+  async getAvailableOrganizers() {
+    const organizers = await UserModel.find({
+      role: { $in: [Role.ORGANIZER, Role.STUDENT_REP] },
+    })
+      .select('organizationName represents')
+      .lean()
+      .exec();
+
+    const distinctNames = organizers
+      .map((user) => {
+        const displayName = user.organizationName || user.represents;
+        return displayName;
+      })
+      .filter((name): name is string => !!name);
+
+    const uniqueNames = [...new Set(distinctNames)];
+
+    return uniqueNames.sort((a, b) => a.localeCompare(b, 'ro'));
   }
 }
 

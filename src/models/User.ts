@@ -1,6 +1,6 @@
 import mongoose, { HydratedDocument, InferSchemaType, Schema } from 'mongoose';
+import { EventCategory } from 'types/EventCategory';
 import { Role } from 'types/Role';
-import { boolean } from 'zod';
 
 const UserSchema = new Schema(
   {
@@ -51,19 +51,29 @@ const UserSchema = new Schema(
 
     preferences: {
       notifications: {
-        eventUpdates: { type: boolean, default: true },
-        eventReminders: { type: boolean, default: true },
+        eventUpdated: { type: Boolean, default: true },
+        eventReminder: { type: Boolean, default: true },
       },
       emails: {
-        eventUpdates: { type: boolean, default: true },
-        eventReminders: { type: boolean, default: true },
+        eventUpdated: { type: Boolean, default: true },
+        eventReminder: { type: Boolean, default: true },
+      },
+
+      eventCategories: {
+        type: [String],
+        enum: Object.values(EventCategory),
+        default: [],
+      },
+      organizers: {
+        type: [String],
+        default: [],
       },
     },
   },
   {
     timestamps: true,
     collection: 'users',
-    _id: false,
+    // _id: false,
   },
 );
 

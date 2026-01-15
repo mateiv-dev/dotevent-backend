@@ -27,7 +27,8 @@ export const getUser = asyncErrorHandler(
 
 export const createUser = asyncErrorHandler(
   async (req: Request, res: Response) => {
-    const { name, adminKey } = req.body;
+    const { name, adminKey, preferredEventCategories, preferredOrganizers } =
+      req.body;
     const userId = req.user!.uid;
     const email = req.user!.email!;
 
@@ -35,6 +36,8 @@ export const createUser = asyncErrorHandler(
       firebaseId: userId,
       email,
       name,
+      preferredEventCategories,
+      preferredOrganizers,
     };
 
     const createdUser = await UserService.createUser(userData, adminKey);
@@ -132,5 +135,12 @@ export const getUserReviews = asyncErrorHandler(
     const userId = req.user!.uid;
     const reviews = await ReviewService.getUserReviews(userId);
     res.status(200).json(ResponseReviewDto.fromArray(reviews));
+  },
+);
+
+export const getAvailableOrganizers = asyncErrorHandler(
+  async (_req: Request, res: Response) => {
+    const organizers = await UserService.getAvailableOrganizers();
+    res.status(200).json(organizers);
   },
 );

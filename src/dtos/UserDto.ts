@@ -1,9 +1,18 @@
 import { UserDocument } from '@models/User';
+import { EventCategory } from 'types/EventCategory';
 
 export interface CreateUserDto {
   firebaseId: string;
   name: string;
   email: string;
+
+  receiveEventUpdatedNotifications?: boolean;
+  receiveEventReminderNotifications?: boolean;
+  receiveEventUpdatedEmails?: boolean;
+  receiveEventReminderEmails?: boolean;
+
+  preferredEventCategories: EventCategory[];
+  preferredOrganizers: string[];
 }
 
 export interface UpdateUserDto {
@@ -11,10 +20,14 @@ export interface UpdateUserDto {
   university?: string;
   // represents?: string;
   // organizationName?: string;
+
   receiveEventUpdatedNotifications?: boolean;
-  receiveEventReminderNotifications: boolean;
-  receiveEventUpdatedEmails: boolean;
-  receiveEventReminderEmails: boolean;
+  receiveEventReminderNotifications?: boolean;
+  receiveEventUpdatedEmails?: boolean;
+  receiveEventReminderEmails?: boolean;
+
+  preferredEventCategories?: EventCategory[];
+  preferredOrganizers?: string[];
 }
 
 interface Settings {
@@ -25,6 +38,8 @@ interface Settings {
 interface Preferences {
   notifications: Settings;
   emails: Settings;
+  eventCategories: EventCategory[];
+  organizers: string[];
 }
 
 export class ResponseUserDto {
@@ -52,19 +67,19 @@ export class ResponseUserDto {
       notifications: {
         eventUpdates:
           (user.preferences?.notifications
-            ?.eventUpdates as unknown as boolean) ?? true,
+            ?.eventUpdated as unknown as boolean) ?? true,
         eventReminders:
           (user.preferences?.notifications
-            ?.eventReminders as unknown as boolean) ?? true,
+            ?.eventReminder as unknown as boolean) ?? true,
       },
+
       emails: {
-        eventUpdates:
-          (user.preferences?.emails?.eventUpdates as unknown as boolean) ??
-          true,
-        eventReminders:
-          (user.preferences?.emails?.eventReminders as unknown as boolean) ??
-          true,
+        eventUpdates: user.preferences?.notifications?.eventUpdated ?? true,
+        eventReminders: user.preferences?.emails?.eventReminder ?? true,
       },
+
+      eventCategories: user.preferences?.eventCategories ?? [],
+      organizers: user.preferences?.organizers ?? [],
     };
 
     this.createdAt = user.createdAt;

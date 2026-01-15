@@ -1,6 +1,7 @@
 import { getUserRoleRequests } from '@controllers/roleRequestController';
 import {
   deleteUser,
+  getAvailableOrganizers,
   getUser,
   getUserEvents,
   getUserFavoriteEvents,
@@ -25,6 +26,8 @@ import {
 const router = Router();
 
 router.get('/', requireAuth, requireRoles([Role.ADMIN]), getUsers);
+
+router.get('/organizers', getAvailableOrganizers);
 
 router.get('/me', requireAuth, getUser);
 router.post('/register', requireAuth, validate(CreateUserSchema), registerUser);

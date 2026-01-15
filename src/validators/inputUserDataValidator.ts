@@ -1,3 +1,4 @@
+import { EventCategory } from 'types/EventCategory';
 import { z } from 'zod';
 
 export const CreateUserSchema = z.object({
@@ -15,7 +16,22 @@ export const CreateUserSchema = z.object({
   receiveEventUpdatedNotifications: z.boolean().optional(),
   receiveEventReminderNotifications: z.boolean().optional(),
   receiveEventUpdatedEmails: z.boolean().optional(),
-  receiveEventRemiderEmails: z.boolean().optional(),
+  receiveEventReminderEmails: z.boolean().optional(),
+
+  preferredEventCategories: z
+    .array(z.enum(Object.values(EventCategory) as [string, ...string[]]))
+    .optional()
+    .default([]),
+
+  preferredOrganizers: z
+    .array(
+      z
+        .string({ message: 'Organization name must be text.' })
+        .trim()
+        .min(1, 'Organization name cannot be empty.'),
+    )
+    .optional()
+    .default([]),
 });
 
 export const UpdateUserSchema = CreateUserSchema.omit({ adminKey: true })
