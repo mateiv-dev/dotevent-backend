@@ -7,6 +7,7 @@ import eventRoutes from '@routes/eventRoutes';
 import notificationRoutes from '@routes/notificationRoutes';
 import reviewRoutes from '@routes/reviewRoutes';
 import requestRoutes from '@routes/roleRequestRoutes';
+import statisticsRoutes from '@routes/statisticsRoutes';
 import userRoutes from '@routes/userRoutes';
 import { AppError } from '@utils/AppError';
 
@@ -22,6 +23,7 @@ app.use(`/reviews`, reviewRoutes);
 app.use(`/users`, userRoutes);
 app.use(`/role-requests`, requestRoutes);
 app.use(`/notifications`, notificationRoutes);
+app.use(`/statistics`, statisticsRoutes);
 
 app.use((req, _res, _next) => {
   throw new AppError(
