@@ -28,7 +28,7 @@ interface Preferences {
 }
 
 export class ResponseUserDto {
-  // public id: string;
+  public _id: string;
   public name: string;
   public email: string;
   public role: string;
@@ -36,9 +36,10 @@ export class ResponseUserDto {
   public represents: string | null;
   public organizationName: string | null;
   public preferences: Preferences;
+  public createdAt: Date;
 
   constructor(user: UserDocument) {
-    // this.id = user._id;
+    this._id = user._id;
     this.name = user.name;
     this.email = user.email;
     this.role = user.role;
@@ -65,6 +66,8 @@ export class ResponseUserDto {
           true,
       },
     };
+
+    this.createdAt = user.createdAt;
   }
 
   static from(user: UserDocument | null): ResponseUserDto | null {

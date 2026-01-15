@@ -19,7 +19,7 @@ class UserService {
       throw new AppError('User not found', 404);
     }
 
-    // await firebase.auth().setCustomUserClaims(id, { role: user.role });
+    await firebase.auth().setCustomUserClaims(id, { role: user.role });
 
     return user;
   }
