@@ -9,7 +9,7 @@ import {
   CreateEventSchema,
   UpdateEventSchema,
 } from 'validators/inputEventDataValidator';
-import { CreateReviewSchema } from 'validators/inputReviewDataValidator';
+import { createReviewSchema } from 'validators/inputReviewDataValidator';
 import {
   addEventToFavorites,
   approveEvent,
@@ -93,7 +93,7 @@ router.post(
   '/:eventId/reviews',
   requireAuth,
   requireRoles([Role.SIMPLE_USER, Role.STUDENT, Role.STUDENT_REP]),
-  validate(CreateEventSchema),
+  validate(createReviewSchema),
   addReview,
 );
 
