@@ -255,13 +255,32 @@ class EventService {
   }
 
   async getUserEvents(userId: string): Promise<PopulatedEventDocument[]> {
-    const userEvents = await EventModel.find({ author: userId })
-      .sort({ date: SORT_DIRECTION })
-      .populate(EVENT_POPULATE_OPTIONS)
-      .lean()
-      .exec();
+    const [userEvents, pendingEvents, rejectedEvents] = await Promise.all([
+      EventModel.find({ author: userId })
+        .populate(EVENT_POPULATE_OPTIONS)
+        .lean()
+        .exec(),
+      PendingEventModel.find({ author: userId })
+        .populate(EVENT_POPULATE_OPTIONS)
+        .lean()
+        .exec(),
+      RejectedEventModel.find({ author: userId })
+        .populate(EVENT_POPULATE_OPTIONS)
+        .lean()
+        .exec(),
+    ]);
 
-    return userEvents as unknown as PopulatedEventDocument[];
+    const allEvents = [
+      ...userEvents,
+      ...pendingEvents,
+      ...rejectedEvents,
+    ] as unknown as PopulatedEventDocument[];
+
+    return allEvents.sort((a, b) => {
+      const dateA = new Date(a.date).getTime();
+      const dateB = new Date(b.date).getTime();
+      return (SORT_DIRECTION as number) === 1 ? dateA - dateB : dateB - dateA;
+    });
   }
 
   async getUserOrganizationEvents(
@@ -567,37 +586,51 @@ class EventService {
   }
 
   async deleteEvent(id: string): Promise<void> {
-    const event = await EventModel.findById(id);
+    const [event, pendingEvent, rejectedEvent] = await Promise.all([
+      EventModel.findById(id),
+      PendingEventModel.findById(id),
+      RejectedEventModel.findById(id),
+    ]);
 
-    if (!event) {
+    const targetEvent = event || pendingEvent || rejectedEvent;
+
+    if (!targetEvent) {
       throw new AppError('Event not found', 404);
     }
 
     const now = new Date();
-    const eventDate = new Date(event.date);
+    const eventDate = new Date(targetEvent.date);
 
-    const diffInMilliseconds = eventDate.getTime() - now.getTime();
-    const diffInHours = diffInMilliseconds / (1000 * 60 * 60);
-
-    if (diffInHours < DELETE_EVENT_HOURS_LIMIT) {
+    if (
+      event &&
+      (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60) <
+      DELETE_EVENT_HOURS_LIMIT
+    ) {
       throw new AppError(
         `Events cannot be deleted within ${DELETE_EVENT_HOURS_LIMIT} hours of starting.`,
         400,
       );
     }
 
-    if (event.attachments.length > 0) {
-      const fileNames = event.attachments.map((file) => file.url);
+    if (targetEvent.attachments && targetEvent.attachments.length > 0) {
+      const fileNames = targetEvent.attachments.map((file: any) => file.url);
       await StorageService.deleteFiles(fileNames);
     }
 
-    await NotificationService.createEventDeletedNotifications(id, event.title);
-
-    await RegistrationModel.deleteMany({ event: id });
-    await FavoriteEventModel.deleteMany({ event: id });
-    await ReviewModel.deleteMany({ event: id });
-
-    await EventModel.findByIdAndDelete(id);
+    if (event) {
+      await NotificationService.createEventDeletedNotifications(
+        id,
+        event.title,
+      );
+      await RegistrationModel.deleteMany({ event: id });
+      await FavoriteEventModel.deleteMany({ event: id });
+      await ReviewModel.deleteMany({ event: id });
+      await EventModel.findByIdAndDelete(id);
+    } else if (pendingEvent) {
+      await PendingEventModel.findByIdAndDelete(id);
+    } else if (rejectedEvent) {
+      await RejectedEventModel.findByIdAndDelete(id);
+    }
   }
 
   async updateRating(eventId: string): Promise<void> {

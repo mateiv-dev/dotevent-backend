@@ -45,4 +45,20 @@ export const UpdateUserSchema = CreateUserSchema.omit({ adminKey: true })
       .min(1, 'University name cannot be empty.')
       .min(2, 'University name must be at least 2 characters long.')
       .optional(),
+    represents: z
+      .string({
+        message: 'Represents must be a valid text.',
+      })
+      .trim()
+      .min(1, 'Represents field cannot be empty.')
+      .min(2, 'Represents field must be at least 2 characters long.')
+      .optional(),
+    organizationName: z
+      .string({
+        message: 'Organization name must be a valid text.',
+      })
+      .trim()
+      .min(1, 'Organization name cannot be empty.')
+      .min(2, 'Organization name must be at least 2 characters long.')
+      .optional(),
   });

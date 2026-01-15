@@ -18,9 +18,8 @@ export interface CreateUserDto {
 export interface UpdateUserDto {
   name?: string;
   university?: string;
-  // represents?: string;
-  // organizationName?: string;
-
+  represents?: string;
+  organizationName?: string;
   receiveEventUpdatedNotifications?: boolean;
   receiveEventReminderNotifications?: boolean;
   receiveEventUpdatedEmails?: boolean;

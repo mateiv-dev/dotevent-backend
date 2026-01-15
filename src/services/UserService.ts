@@ -138,6 +138,16 @@ class UserService {
         if (incomingData.university !== undefined)
           user.university = incomingData.university;
         break;
+      case Role.STUDENT_REP:
+        if (incomingData.university !== undefined)
+          user.university = incomingData.university;
+        if (incomingData.represents !== undefined)
+          user.represents = incomingData.represents;
+        break;
+      case Role.ORGANIZER:
+        if (incomingData.organizationName !== undefined)
+          user.organizationName = incomingData.organizationName;
+        break;
     }
 
     if (user.preferences) {
