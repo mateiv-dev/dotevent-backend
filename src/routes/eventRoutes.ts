@@ -9,6 +9,7 @@ import {
   CreateEventSchema,
   UpdateEventSchema,
 } from 'validators/inputEventDataValidator';
+import { createReviewSchema as CreateReviewSchema } from 'validators/inputReviewDataValidator';
 import {
   addEventToFavorites,
   approveEvent,
