@@ -2,6 +2,8 @@ import { FavoriteEventModel } from '@models/FavoriteEvent';
 import { RegistrationModel } from '@models/Registration';
 import { AppError } from '@utils/AppError';
 import nodemailer, { SendMailOptions, Transporter } from 'nodemailer';
+import { Role } from 'types/Role';
+import { RoleRequestStatus } from 'types/RoleRequestStatus';
 
 export interface IEmailOptions {
   to: string;
@@ -15,12 +17,11 @@ export interface IEmailData {
   userName?: string;
   eventTitle?: string;
   eventId?: string;
-  role?: string;
+  role?: Role;
 }
 
 class EmailService {
   private transporter: Transporter | null = null;
-  private readonly SITE_URL = process.env.SITE_URL || 'https://dotevent.com';
 
   constructor() {}
 
@@ -80,7 +81,7 @@ class EmailService {
           <h2 style="color: #00359e; margin-top: 0; font-size: 20px;">${title}</h2>
           <p style="font-size: 16px; color: #555555;">${message}</p>
           <div style="margin-top: 40px;">
-            <a href="${this.SITE_URL}" 
+            <a href="${process.env.SITE_URL}" 
                style="background-color: #00359e; color: #ffffff; padding: 15px 40px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">
                Go to Site
             </a>
@@ -186,26 +187,24 @@ class EmailService {
 
   async sendRoleRequestUpdateEmail(
     data: IEmailData,
-    status: 'approved' | 'rejected',
+    status: RoleRequestStatus,
   ) {
-    const isApproved = status === 'approved';
-    const title = isApproved ? 'Request Approved' : 'Request Update';
+    const isApproved = status === RoleRequestStatus.APPROVED;
+    const title = isApproved
+      ? 'Role Request Approved'
+      : 'Role Request Rejected';
 
     const message = isApproved
       ? `Hi ${
           data.userName || 'there'
         },<br><br>Great news! Your request for the <strong>${
           data.role
-        }</strong> role at <strong>${
-          data.eventTitle
-        }</strong> has been approved.`
+        }</strong> role has been approved.`
       : `Hi ${
           data.userName || 'there'
         },<br><br>Thank you for your interest. Unfortunately, your request for the <strong>${
           data.role
-        }</strong> role at <strong>${
-          data.eventTitle
-        }</strong> was not approved at this time.`;
+        }</strong> role </strong> was not approved at this time.`;
 
     await this.sendEmail({
       to: data.email,

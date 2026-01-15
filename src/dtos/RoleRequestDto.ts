@@ -21,7 +21,7 @@ export interface ResponseRoleRequestProccessedByDto {
 }
 
 export class ResponseRoleRequestDto {
-  public user: ResponseRoleRequestUserDto;
+  public user: ResponseRoleRequestUserDto | null;
   public id: string;
   public requestedRole: string;
   public status: string;
@@ -36,14 +36,20 @@ export class ResponseRoleRequestDto {
   public proccessedAt: Date | null;
 
   constructor(roleRequest: PopulatedRoleRequestDocument) {
-    const userData: ResponseRoleRequestUserDto = {
-      name: roleRequest.user.name,
-      email: roleRequest.user.email,
-      role: roleRequest.user.role,
-    };
-
-    this.user = userData;
     this.id = roleRequest._id.toString();
+
+    if (roleRequest.user) {
+      const userData: ResponseRoleRequestUserDto = {
+        name: roleRequest.user.name,
+        email: roleRequest.user.email,
+        role: roleRequest.user.role,
+      };
+
+      this.user = userData;
+    } else {
+      this.user = null;
+    }
+
     this.requestedRole = roleRequest.requestedRole;
     this.status = roleRequest.status;
     this.description = roleRequest.description;

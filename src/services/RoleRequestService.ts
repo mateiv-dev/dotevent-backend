@@ -11,6 +11,7 @@ import { INotification } from 'types/INotification';
 import { NotificationType } from 'types/NotificationType';
 import { Role } from 'types/Role';
 import { RoleRequestStatus } from 'types/RoleRequestStatus';
+import EmailService, { IEmailData } from './EmailService';
 import NotificationService from './NotificationService';
 import UserService from './UserService';
 
@@ -229,6 +230,17 @@ class RoleRequestService {
 
     await NotificationService.createNotification(notificationData);
 
+    const emailData: IEmailData = {
+      email: updatedUser.email,
+      userName: updatedUser.name,
+      role: request.requestedRole,
+    };
+
+    EmailService.sendRoleRequestUpdateEmail(
+      emailData,
+      RoleRequestStatus.APPROVED,
+    );
+
     return savedRequestObject as unknown as PopulatedRoleRequestDocument;
   }
 
@@ -278,6 +290,17 @@ class RoleRequestService {
     };
 
     await NotificationService.createNotification(notificationData);
+
+    const emailData: IEmailData = {
+      email: existingUser.email,
+      userName: existingUser.name,
+      role: request.requestedRole,
+    };
+
+    EmailService.sendRoleRequestUpdateEmail(
+      emailData,
+      RoleRequestStatus.REJECTED,
+    );
 
     return savedRequestObject as unknown as PopulatedRoleRequestDocument;
   }
