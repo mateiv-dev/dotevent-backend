@@ -34,7 +34,7 @@
     "@types/json2csv": "^5.0.7",
     "@types/mongoose": "^5.11.96",
     "@types/multer": "^2.0.0",
-    "@types/node": "^24.10.1",
+    "@types/node": "^24.10.9",
     "@types/nodemailer": "^7.0.5",
     "@types/uuid": "^10.0.0",
     "ts-node": "^10.9.2",

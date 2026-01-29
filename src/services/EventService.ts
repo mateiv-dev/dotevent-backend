@@ -334,19 +334,27 @@ class EventService {
       .filter((event) => event !== null) as unknown as PopulatedEventDocument[];
   }
 
-  private getValidatedEventDate(date: Date, time: string): Date {
+  private getEventDateTime(date: Date, time: string): Date {
     const [hours, minutes] = time.split(':').map(Number);
     const eventDate = new Date(date);
     eventDate.setHours(hours!, minutes!, 0, 0);
+    return eventDate;
+  }
 
-    if (eventDate <= new Date()) {
+  private validateEventDate(eventStartDate: Date, eventEndDate: Date): void {
+    if (eventStartDate <= new Date()) {
       throw new AppError(
         'The event must be scheduled for a future date and time.',
         400,
       );
     }
 
-    return eventDate;
+    if (eventEndDate <= eventStartDate) {
+      throw new AppError(
+        'The end date must be later than the start date.',
+        400,
+      );
+    }
   }
 
   async createEvent(
@@ -360,10 +368,16 @@ class EventService {
         throw new AppError('User not found.', 404);
       }
 
-      const eventDate = this.getValidatedEventDate(
+      const eventStartDate = this.getEventDateTime(
         newEventData.date,
         newEventData.time,
       );
+      const eventEndDate = this.getEventDateTime(
+        newEventData.endDate,
+        newEventData.endTime,
+      );
+
+      this.validateEventDate(eventStartDate, eventEndDate);
 
       let attachments: CreateAttachmentDto[] = [];
       let titleImageUrl: string | null = null;
@@ -395,7 +409,8 @@ class EventService {
       const newPendingEvent = new PendingEventModel({
         ...newEventData,
         author: userId,
-        date: eventDate,
+        date: eventStartDate,
+        endDate: eventEndDate,
         attachments: attachments,
         titleImage: titleImageUrl,
         organizer: {
@@ -485,11 +500,32 @@ class EventService {
       );
     }
 
-    if (newEventData.date || newEventData.time) {
-      const finalDate = newEventData.date || originalEvent.date;
-      const finalTime = newEventData.time || originalEvent.time;
-      originalEvent.date = this.getValidatedEventDate(finalDate, finalTime);
-      originalEvent.time = finalTime;
+    if (
+      newEventData.date ||
+      newEventData.time ||
+      newEventData.endDate ||
+      newEventData.endTime
+    ) {
+      const finalStartDate = newEventData.date || originalEvent.date;
+      const finalStartTime = newEventData.time || originalEvent.time;
+      const finalEndDate = newEventData.endDate || originalEvent.endDate;
+      const finalEndTime = newEventData.endTime || originalEvent.endTime;
+
+      const finalStartDateTime = this.getEventDateTime(
+        finalStartDate,
+        finalStartTime,
+      );
+      const finalEndDateTime = this.getEventDateTime(
+        finalEndDate,
+        finalEndTime,
+      );
+
+      this.validateEventDate(finalStartDateTime, finalEndDateTime);
+
+      originalEvent.date = finalStartDateTime;
+      originalEvent.time = finalStartTime;
+      originalEvent.endDate = finalEndDateTime;
+      originalEvent.endTime = finalEndTime;
     }
 
     const deleteAttachments = newEventData.deleteAttachments;
@@ -604,7 +640,7 @@ class EventService {
     if (
       event &&
       (eventDate.getTime() - now.getTime()) / (1000 * 60 * 60) <
-      DELETE_EVENT_HOURS_LIMIT
+        DELETE_EVENT_HOURS_LIMIT
     ) {
       throw new AppError(
         `Events cannot be deleted within ${DELETE_EVENT_HOURS_LIMIT} hours of starting.`,

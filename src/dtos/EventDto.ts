@@ -50,7 +50,9 @@ export class ResponseEventDto {
   public status: string;
   public title: string;
   public date: Date;
+  public endDate: Date;
   public time: string;
+  public endTime: string;
   public location: string;
   public category: EventCategory;
   public attendees: number;
@@ -87,8 +89,12 @@ export class ResponseEventDto {
     this.status = event.status;
     this.author = authorData;
     this.title = event.title;
+
     this.date = event.date;
     this.time = event.time;
+    this.endDate = event.endDate;
+    this.endTime = event.endTime;
+
     this.location = event.location;
     this.category = event.category;
     this.attendees = event.attendees;

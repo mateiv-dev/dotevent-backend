@@ -51,8 +51,12 @@ const EventSchema = new Schema(
     },
 
     title: { type: String, required: true, trim: true },
+
     date: { type: Date, required: true },
     time: { type: String, required: true, trim: true },
+    endDate: { type: Date, required: true },
+    endTime: { type: String, required: true, trim: true },
+
     location: { type: String, required: true, trim: true },
     category: {
       type: String,
