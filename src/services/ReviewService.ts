@@ -58,17 +58,10 @@ class ReviewService {
     }
 
     const eventStartTime = new Date(event.date);
-
-    if (event.time) {
-      const [hours, minutes] = event.time.split(':');
-      eventStartTime.setHours(parseInt(hours!), parseInt(minutes!), 0, 0);
-    } else {
-      eventStartTime.setHours(0, 0, 0, 0);
-    }
-
     const now = new Date();
+    const gracePeriodMs = 120 * 60 * 1000;
 
-    if (now < eventStartTime) {
+    if (now.getTime() < eventStartTime.getTime() - gracePeriodMs) {
       throw new AppError(
         'You cannot leave a review until the event has started.',
         409,
